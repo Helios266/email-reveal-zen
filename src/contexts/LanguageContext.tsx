@@ -1,139 +1,128 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-// Language translations
-const translations = {
-  // Authentication pages
-  'Sign Up': 'サインアップ',
-  'Log In': 'ログイン',
-  'Email': 'メールアドレス',
-  'Password': 'パスワード',
-  'Confirm Password': 'パスワード (確認)',
-  'Forgot Password?': 'パスワードをお忘れですか？',
-  'Reset Password': 'パスワードをリセット',
-  'Name': '名前',
-  'Already have an account?': 'アカウントをお持ちですか？',
-  'Don\'t have an account?': 'アカウントをお持ちでないですか？',
-  'Sign up now': '今すぐサインアップ',
-  'Log in now': '今すぐログイン',
-  'Reset your password': 'パスワードをリセット',
-  'Back to login': 'ログインに戻る',
-  'Send reset link': 'リセットリンクを送信',
-  'Check your email for the reset link': 'リセットリンクをメールで確認してください',
-  'Log Out': 'ログアウト',
-  'Sign up successful! Please check your email for verification.': 'サインアップ成功！確認用メールをご確認ください。',
-
-  // Dashboard
-  'Welcome': 'ようこそ',
-  'Dashboard': 'ダッシュボード',
-  'Single Email Lookup': '単一メールルックアップ',
-  'Bulk Email Processing': '一括メール処理',
-  'Search': '検索',
-  'Export': 'エクスポート',
-  'Export All': 'すべてエクスポート',
-  'Upload CSV': 'CSVアップロード',
-  'Results': '結果',
-  'No results found': '結果が見つかりません',
-  'Processing...': '処理中...',
-  'Enter email address': 'メールアドレスを入力',
-  'Search Results': '検索結果',
-  'Enter an email address to find contact details': 'メールアドレスを入力して連絡先情報を検索',
-  'Upload a CSV file with email addresses to process in bulk': 'CSVファイルをアップロードして複数のメールアドレスを一括処理',
-  'Found': '見つかりました',
-  'Drop CSV file here or click to upload': 'CSVファイルをここにドロップするか、クリックしてアップロード',
-  'CSV file should have an "email" column': 'CSVファイルには「email」列が必要です',
-  'No valid emails found in the CSV': 'CSVに有効なメールアドレスが見つかりません',
-  'Processing complete': '処理完了',
-  'Exported successfully': 'エクスポートに成功しました',
-  'Create your account to get started': 'アカウントを作成して始めましょう',
-  'Enter your credentials to access your account': '認証情報を入力してアカウントにアクセス',
-  'Enter your email to receive a password reset link': 'パスワードリセットリンクを受け取るメールアドレスを入力',
-  
-  // Email lookup results
-  'Company': '会社',
-  'Social Profile': 'ソーシャルプロフィール',
-  'LinkedIn': 'LinkedIn',
-  'Twitter': 'Twitter',
-  'Uploaded': 'アップロード完了',
-  'Processing': '処理中',
-  'Error': 'エラー',
-  'File must be a CSV': 'ファイルはCSV形式である必要があります',
-  
-  // Validation messages
-  'Email is required': 'メールアドレスが必要です',
-  'Invalid email format': '無効なメール形式です',
-  'Password is required': 'パスワードが必要です',
-  'Password must be at least 6 characters': 'パスワードは6文字以上である必要があります',
-  'Passwords do not match': 'パスワードが一致しません',
-  'Name is required': '名前が必要です',
-  
-  // Notification messages
-  'Success': '成功',
-  'Warning': '警告',
-  'Info': '情報',
-  'Account created successfully': 'アカウントが正常に作成されました',
-  'Logged in successfully': 'ログインに成功しました',
-  'Logged out successfully': 'ログアウトに成功しました',
-  'Reset link sent to your email': 'リセットリンクがメールに送信されました',
-  'Something went wrong': '問題が発生しました',
-  
-  // Language switcher
-  'English': '英語',
-  'Japanese': '日本語',
-  'Switch to English': '英語に切り替え',
-  'Switch to Japanese': '日本語に切り替え',
-  
-  // Generic
-  'Cancel': 'キャンセル',
-  'Save': '保存',
-  'Delete': '削除',
-  'Edit': '編集',
-  'View': '表示',
-  'Loading': '読み込み中...',
-  'No data available': 'データがありません',
-  'Back': '戻る',
-  'Next': '次へ',
-  'Submit': '送信',
-  'Reset': 'リセット',
-  'Verify': '確認',
-  'Done': '完了'
+type LanguageContextType = {
+  language: string;
+  setLanguage: (language: string) => void;
+  t: (key: string) => string;
 };
 
-interface LanguageContextType {
-  t: (key: string) => string;
-  language: string;
-  toggleLanguage: () => void;
-}
+// Create the context with a default value
+const LanguageContext = createContext<LanguageContextType>({
+  language: 'en',
+  setLanguage: () => {},
+  t: (key: string) => key,
+});
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+// Custom hook to use the language context
+export const useLanguage = () => useContext(LanguageContext);
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState('ja'); // Default to Japanese
+// Define available translations
+const translations: Record<string, Record<string, string>> = {
+  en: {
+    'Dashboard': 'Dashboard',
+    'Welcome': 'Welcome',
+    'Single Email Lookup': 'Single Email Lookup',
+    'Bulk Email Processing': 'Bulk Email Processing',
+    'Enter an email address to find contact details': 'Enter an email address to find contact details',
+    'Enter email address': 'Enter email address',
+    'Processing...': 'Processing...',
+    'Search': 'Search',
+    'Search Results': 'Search Results',
+    'Export': 'Export',
+    'Name': 'Name',
+    'Company': 'Company',
+    'Social Profile': 'Social Profile',
+    'LinkedIn': 'LinkedIn',
+    'Twitter': 'Twitter',
+    'No results found': 'No results found',
+    'Upload a CSV file with email addresses to process in bulk': 'Upload a CSV file with email addresses to process in bulk',
+    'Drop CSV file here or click to upload': 'Drop CSV file here or click to upload',
+    'CSV file should have an "email" column': 'CSV file should have an "email" column',
+    'Uploaded': 'Uploaded',
+    'Processing': 'Processing',
+    'Error': 'Error',
+    'Results': 'Results',
+    'Found': 'Found',
+    'Export All': 'Export All',
+    'Email': 'Email',
+    'Invalid email format': 'Invalid email format',
+    'Something went wrong': 'Something went wrong',
+    'Exported successfully': 'Exported successfully',
+    'No valid emails found in the CSV': 'No valid emails found in the CSV',
+    'File must be a CSV': 'File must be a CSV',
+  },
+  ja: {
+    'Dashboard': 'ダッシュボード',
+    'Welcome': 'ようこそ',
+    'Single Email Lookup': '単一メールの検索',
+    'Bulk Email Processing': '一括メール処理',
+    'Enter an email address to find contact details': '連絡先の詳細を検索するメールアドレスを入力してください',
+    'Enter email address': 'メールアドレスを入力',
+    'Processing...': '処理中...',
+    'Search': '検索',
+    'Search Results': '検索結果',
+    'Export': 'エクスポート',
+    'Name': '名前',
+    'Company': '会社',
+    'Social Profile': 'ソーシャルプロフィール',
+    'LinkedIn': 'LinkedIn',
+    'Twitter': 'Twitter',
+    'Uploaded': 'アップロード完了',
+    'Processing': '処理中',
+    'Error': 'エラー',
+    'No results found': '結果が見つかりません',
+    'Upload a CSV file with email addresses to process in bulk': '一括処理するメールアドレスを含むCSVファイルをアップロード',
+    'Drop CSV file here or click to upload': 'CSVファイルをここにドロップするか、クリックしてアップロード',
+    'CSV file should have an "email" column': 'CSVファイルには「email」列が必要です',
+    'Results': '結果',
+    'Found': '見つかった',
+    'Export All': 'すべてエクスポート',
+    'Email': 'メール',
+    'Invalid email format': '無効なメール形式',
+    'Something went wrong': 'エラーが発生しました',
+    'Exported successfully': 'エクスポート成功',
+    'No valid emails found in the CSV': 'CSVに有効なメールが見つかりません',
+    'File must be a CSV': 'ファイルはCSV形式である必要があります',
+  },
+};
 
-  // Toggle between Japanese and English
-  const toggleLanguage = () => {
-    setLanguage(prevLang => prevLang === 'ja' ? 'en' : 'ja');
+// Provider component that wraps the app
+export const LanguageProvider: React.FC<{children: ReactNode}> = ({ children }) => {
+  const [language, setLanguage] = useState('en');
+  
+  // Load saved language preference from localStorage
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('language');
+    if (savedLanguage) {
+      setLanguage(savedLanguage);
+    }
+  }, []);
+  
+  // Save language preference to localStorage
+  const changeLanguage = (newLanguage: string) => {
+    setLanguage(newLanguage);
+    localStorage.setItem('language', newLanguage);
   };
-
+  
   // Translation function
   const t = (key: string): string => {
-    if (language === 'ja' && key in translations) {
-      return translations[key as keyof typeof translations];
+    if (translations[language] && translations[language][key]) {
+      return translations[language][key];
     }
-    return key; // Return the English key if Japanese translation not found or language is English
+    
+    // Fallback to English if translation not found
+    if (translations['en'] && translations['en'][key]) {
+      return translations['en'][key];
+    }
+    
+    // Return the key if translation not available
+    return key;
   };
-
+  
   return (
-    <LanguageContext.Provider value={{ t, language, toggleLanguage }}>
+    <LanguageContext.Provider value={{ language, setLanguage: changeLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );
-}
-
-export function useLanguage() {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
-  return context;
-}
+};

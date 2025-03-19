@@ -32,7 +32,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult> => 
     
     // Call our Supabase Edge Function
     const { data, error } = await supabase.functions.invoke('email-lookup', {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },

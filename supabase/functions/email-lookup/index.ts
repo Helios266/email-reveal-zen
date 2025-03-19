@@ -64,9 +64,9 @@ serve(async (req) => {
 
       // Format the response to match our application's expectations
       const formattedResponse = {
-        name: data.person?.full_name || '',
+        name: data.person?.full_name || data.person?.firstName + " " + data.person?.lastName || '',
         company: data.company?.name || '',
-        linkedin: data.person?.linkedin_url || '',
+        linkedin: data.person?.linkedInUrl || '',
         twitter: data.person?.twitter_url || '',
         found: !!data.person || false
       };
@@ -112,9 +112,9 @@ serve(async (req) => {
           if (response.ok) {
             const data = await response.json();
             results[email] = {
-              name: data.person?.full_name || '',
+              name: data.person?.full_name || (data.person?.firstName && data.person?.lastName ? `${data.person.firstName} ${data.person.lastName}` : ''),
               company: data.company?.name || '',
-              linkedin: data.person?.linkedin_url || '',
+              linkedin: data.person?.linkedInUrl || '',
               twitter: data.person?.twitter_url || '',
               found: !!data.person || false
             };
