@@ -37,6 +37,17 @@ const translations = {
   'Processing...': '処理中...',
   'Enter email address': 'メールアドレスを入力',
   'Search Results': '検索結果',
+  'Enter an email address to find contact details': 'メールアドレスを入力して連絡先情報を検索',
+  'Upload a CSV file with email addresses to process in bulk': 'CSVファイルをアップロードして複数のメールアドレスを一括処理',
+  'Found': '見つかりました',
+  'Drop CSV file here or click to upload': 'CSVファイルをここにドロップするか、クリックしてアップロード',
+  'CSV file should have an "email" column': 'CSVファイルには「email」列が必要です',
+  'No valid emails found in the CSV': 'CSVに有効なメールアドレスが見つかりません',
+  'Processing complete': '処理完了',
+  'Exported successfully': 'エクスポートに成功しました',
+  'Create your account to get started': 'アカウントを作成して始めましょう',
+  'Enter your credentials to access your account': '認証情報を入力してアカウントにアクセス',
+  'Enter your email to receive a password reset link': 'パスワードリセットリンクを受け取るメールアドレスを入力',
   
   // Email lookup results
   'Company': '会社',
@@ -67,6 +78,12 @@ const translations = {
   'Reset link sent to your email': 'リセットリンクがメールに送信されました',
   'Something went wrong': '問題が発生しました',
   
+  // Language switcher
+  'English': '英語',
+  'Japanese': '日本語',
+  'Switch to English': '英語に切り替え',
+  'Switch to Japanese': '日本語に切り替え',
+  
   // Generic
   'Cancel': 'キャンセル',
   'Save': '保存',
@@ -85,23 +102,30 @@ const translations = {
 
 interface LanguageContextType {
   t: (key: string) => string;
+  language: string;
+  toggleLanguage: () => void;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language] = useState('ja'); // Default to Japanese
+  const [language, setLanguage] = useState('ja'); // Default to Japanese
+
+  // Toggle between Japanese and English
+  const toggleLanguage = () => {
+    setLanguage(prevLang => prevLang === 'ja' ? 'en' : 'ja');
+  };
 
   // Translation function
   const t = (key: string): string => {
     if (language === 'ja' && key in translations) {
       return translations[key as keyof typeof translations];
     }
-    return key; // Fallback to key itself if translation not found
+    return key; // Return the English key if Japanese translation not found or language is English
   };
 
   return (
-    <LanguageContext.Provider value={{ t }}>
+    <LanguageContext.Provider value={{ t, language, toggleLanguage }}>
       {children}
     </LanguageContext.Provider>
   );

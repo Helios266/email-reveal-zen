@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Globe } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { signIn, loading } = useAuth();
-  const { t } = useLanguage();
+  const { t, language, toggleLanguage } = useLanguage();
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -37,6 +38,17 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="absolute top-4 right-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={toggleLanguage}
+          className="flex items-center gap-1"
+        >
+          <Globe className="h-4 w-4" />
+          <span className="text-xs">{language === 'ja' ? 'English' : '日本語'}</span>
+        </Button>
+      </div>
       <div className="w-full max-w-md animate-fade-in">
         <Card className="border-none shadow-lg glass-panel">
           <CardHeader className="space-y-1">

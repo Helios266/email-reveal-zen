@@ -3,11 +3,11 @@ import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, Globe } from 'lucide-react';
 
 const AppLayout = () => {
   const { user, signOut } = useAuth();
-  const { t } = useLanguage();
+  const { t, language, toggleLanguage } = useLanguage();
 
   if (!user) return <Outlet />;
 
@@ -40,7 +40,15 @@ const AppLayout = () => {
             </a>
           </nav>
         </div>
-        <div className="absolute bottom-4 left-4 right-4">
+        <div className="absolute bottom-16 left-4 right-4">
+          <Button
+            variant="outline"
+            className="w-full justify-start mb-2"
+            onClick={toggleLanguage}
+          >
+            <Globe className="mr-2 h-4 w-4" />
+            {language === 'ja' ? t('Switch to English') : t('Switch to Japanese')}
+          </Button>
           <Button
             variant="outline"
             className="w-full justify-start"
@@ -58,6 +66,14 @@ const AppLayout = () => {
           <div className="md:hidden font-semibold text-lg text-primary">Reverse Email Lookup</div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{t('Welcome')}, {user.name}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={toggleLanguage}
+            >
+              <Globe className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"
