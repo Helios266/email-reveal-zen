@@ -33,7 +33,10 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult> => 
     // Call our Supabase Edge Function
     const { data, error } = await supabase.functions.invoke('email-lookup', {
       method: 'GET',
-      query: { email }
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: { email }
     });
 
     if (error) {
@@ -42,6 +45,13 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult> => 
     }
 
     console.log('API lookup result:', data);
+    
+    // Get the current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
     
     // Store the result in our database for future reference
     const { error: insertError } = await supabase
@@ -52,7 +62,8 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult> => 
         company: data.company,
         linkedin: data.linkedin,
         twitter: data.twitter,
-        found: data.found
+        found: data.found,
+        user_id: user.id
       });
     
     if (insertError) {
@@ -74,6 +85,13 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult> => 
 // Function to process a batch of emails
 export const lookupEmailBatch = async (emails: string[]): Promise<Record<string, EmailLookupResult>> => {
   try {
+    // Get the current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
     // First, check which emails we already have in our database
     const { data: existingLookups } = await supabase
       .from('email_lookups')
@@ -102,7 +120,7 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
       return existingResults;
     }
     
-    // Process emails in batches of 10 to avoid timeouts
+    // Process emails in batches of 10
     const results: Record<string, EmailLookupResult> = { ...existingResults };
     
     // Process in chunks of 10
@@ -112,6 +130,9 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
       // Call our Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('email-lookup', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: { emails: batch }
       });
 
@@ -134,13 +155,14 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
       Object.assign(results, data);
       
       // Store the results in our database
-      const dataToInsert = Object.entries(data).map(([email, result]) => ({
+      const dataToInsert = Object.entries(data as Record<string, EmailLookupResult>).map(([email, result]) => ({
         email,
         name: result.name,
         company: result.company,
         linkedin: result.linkedin,
         twitter: result.twitter,
-        found: result.found
+        found: result.found,
+        user_id: user.id
       }));
       
       if (dataToInsert.length > 0) {

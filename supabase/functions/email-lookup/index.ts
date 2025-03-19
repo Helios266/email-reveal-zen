@@ -18,11 +18,12 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
+    // Parse request body
+    const requestData = await req.json().catch(() => null);
     
-    if (req.method === "GET") {
+    if (req.method === "GET" || (requestData && requestData.email)) {
       // Single email lookup
-      const email = url.searchParams.get("email");
+      const email = requestData?.email;
       
       if (!email) {
         return new Response(
@@ -76,9 +77,9 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
-    } else if (req.method === "POST") {
+    } else if (req.method === "POST" && requestData && requestData.emails) {
       // Batch email lookup
-      const { emails } = await req.json();
+      const emails = requestData.emails;
       
       if (!emails || !Array.isArray(emails) || emails.length === 0) {
         return new Response(

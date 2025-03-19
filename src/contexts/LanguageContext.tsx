@@ -54,7 +54,6 @@ const translations = {
   'Social Profile': 'ソーシャルプロフィール',
   'LinkedIn': 'LinkedIn',
   'Twitter': 'Twitter',
-  'Drop CSV file here or click to upload': 'CSVファイルをここにドロップするか、クリックしてアップロード',
   'Uploaded': 'アップロード完了',
   'Processing': '処理中',
   'Error': 'エラー',
