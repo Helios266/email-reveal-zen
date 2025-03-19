@@ -37,11 +37,10 @@ serve(async (req) => {
 
       console.log(`Looking up email: ${email}`);
       
-      const apiUrl = `${REVERSECONTACT_API_URL}?email=${encodeURIComponent(email)}`;
+      const apiUrl = `${REVERSECONTACT_API_URL}?apikey=${API_KEY}&email=${encodeURIComponent(email)}`;
       const response = await fetch(apiUrl, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${API_KEY}`,
           "Content-Type": "application/json",
         },
       });
