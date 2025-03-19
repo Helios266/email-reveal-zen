@@ -9,7 +9,75 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      batch_lookups: {
+        Row: {
+          created_at: string
+          file_name: string | null
+          id: string
+          processed_emails: number
+          status: string
+          total_emails: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          processed_emails?: number
+          status?: string
+          total_emails?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string | null
+          id?: string
+          processed_emails?: number
+          status?: string
+          total_emails?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_lookups: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          found: boolean
+          id: string
+          linkedin: string | null
+          name: string | null
+          twitter: string | null
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          found?: boolean
+          id?: string
+          linkedin?: string | null
+          name?: string | null
+          twitter?: string | null
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          found?: boolean
+          id?: string
+          linkedin?: string | null
+          name?: string | null
+          twitter?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

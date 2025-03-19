@@ -1,4 +1,6 @@
 
+import { supabase } from "@/integrations/supabase/client";
+
 interface EmailLookupResult {
   name: string;
   company: string;
@@ -7,96 +9,165 @@ interface EmailLookupResult {
   found: boolean;
 }
 
-// Mock dataset for demo purposes
-const mockData: Record<string, EmailLookupResult> = {
-  'john@example.com': {
-    name: '山田 太郎',
-    company: '株式会社ABC',
-    linkedin: 'linkedin.com/in/johndoe',
-    twitter: 'twitter.com/johndoe',
-    found: true
-  },
-  'sarah@example.com': {
-    name: '佐藤 優子',
-    company: 'ソフトウェア株式会社',
-    linkedin: 'linkedin.com/in/sarahjones',
-    found: true
-  },
-  'alex@example.com': {
-    name: '田中 翔太',
-    company: 'デザインスタジオXYZ',
-    twitter: 'twitter.com/alextaylor',
-    found: true
-  },
-  'emma@example.com': {
-    name: '鈴木 花子',
-    company: 'テクノロジー株式会社',
-    linkedin: 'linkedin.com/in/emmawhite',
-    twitter: 'twitter.com/emmawhite',
-    found: true
-  }
-};
-
-// Function to simulate email lookup
+// Function to lookup an email using the Reverse Contact API via our Edge Function
 export const lookupEmail = async (email: string): Promise<EmailLookupResult> => {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  if (email in mockData) {
-    return mockData[email];
-  }
-  
-  // 30% chance of finding a random person
-  if (Math.random() < 0.3) {
-    const names = ['伊藤 健太', '高橋 美咲', '渡辺 大輔', '斎藤 千華', '小林 誠'];
-    const companies = ['テック株式会社', 'デザインラボ', '株式会社イノベーション', 'クリエイティブスタジオ', 'グローバル商事'];
+  try {
+    // First, check if we already have this email in our database
+    const { data: existingLookup } = await supabase
+      .from('email_lookups')
+      .select('*')
+      .eq('email', email)
+      .single();
     
+    if (existingLookup) {
+      console.log('Found existing lookup in database:', existingLookup);
+      return {
+        name: existingLookup.name || '',
+        company: existingLookup.company || '',
+        linkedin: existingLookup.linkedin || undefined,
+        twitter: existingLookup.twitter || undefined,
+        found: existingLookup.found
+      };
+    }
+    
+    // Call our Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('email-lookup', {
+      method: 'GET',
+      query: { email }
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message);
+    }
+
+    console.log('API lookup result:', data);
+    
+    // Store the result in our database for future reference
+    const { error: insertError } = await supabase
+      .from('email_lookups')
+      .insert({
+        email,
+        name: data.name,
+        company: data.company,
+        linkedin: data.linkedin,
+        twitter: data.twitter,
+        found: data.found
+      });
+    
+    if (insertError) {
+      console.error('Error storing lookup result:', insertError);
+    }
+    
+    return data as EmailLookupResult;
+  } catch (error) {
+    console.error('Email lookup error:', error);
+    // Return not found on error
     return {
-      name: names[Math.floor(Math.random() * names.length)],
-      company: companies[Math.floor(Math.random() * companies.length)],
-      linkedin: Math.random() > 0.5 ? `linkedin.com/in/${email.split('@')[0]}` : undefined,
-      twitter: Math.random() > 0.5 ? `twitter.com/${email.split('@')[0]}` : undefined,
-      found: true
+      name: '',
+      company: '',
+      found: false
     };
   }
-  
-  // Not found
-  return {
-    name: '',
-    company: '',
-    found: false
-  };
 };
 
 // Function to process a batch of emails
 export const lookupEmailBatch = async (emails: string[]): Promise<Record<string, EmailLookupResult>> => {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  const results: Record<string, EmailLookupResult> = {};
-  
-  for (const email of emails) {
-    if (email in mockData) {
-      results[email] = mockData[email];
-    } else if (Math.random() < 0.3) {
-      const names = ['伊藤 健太', '高橋 美咲', '渡辺 大輔', '斎藤 千華', '小林 誠'];
-      const companies = ['テック株式会社', 'デザインラボ', '株式会社イノベーション', 'クリエイティブスタジオ', 'グローバル商事'];
+  try {
+    // First, check which emails we already have in our database
+    const { data: existingLookups } = await supabase
+      .from('email_lookups')
+      .select('*')
+      .in('email', emails);
+    
+    // Create a map of existing lookups
+    const existingResults: Record<string, EmailLookupResult> = {};
+    if (existingLookups) {
+      existingLookups.forEach(lookup => {
+        existingResults[lookup.email] = {
+          name: lookup.name || '',
+          company: lookup.company || '',
+          linkedin: lookup.linkedin || undefined,
+          twitter: lookup.twitter || undefined,
+          found: lookup.found
+        };
+      });
+    }
+    
+    // Filter out emails we already have
+    const emailsToLookup = emails.filter(email => !existingResults[email]);
+    
+    if (emailsToLookup.length === 0) {
+      console.log('All emails already in database');
+      return existingResults;
+    }
+    
+    // Process emails in batches of 10 to avoid timeouts
+    const results: Record<string, EmailLookupResult> = { ...existingResults };
+    
+    // Process in chunks of 10
+    for (let i = 0; i < emailsToLookup.length; i += 10) {
+      const batch = emailsToLookup.slice(i, i + 10);
       
-      results[email] = {
-        name: names[Math.floor(Math.random() * names.length)],
-        company: companies[Math.floor(Math.random() * companies.length)],
-        linkedin: Math.random() > 0.5 ? `linkedin.com/in/${email.split('@')[0]}` : undefined,
-        twitter: Math.random() > 0.5 ? `twitter.com/${email.split('@')[0]}` : undefined,
-        found: true
-      };
-    } else {
+      // Call our Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('email-lookup', {
+        method: 'POST',
+        body: { emails: batch }
+      });
+
+      if (error) {
+        console.error('Edge function error for batch:', error);
+        // Fill in not found for the remaining emails
+        batch.forEach(email => {
+          if (!results[email]) {
+            results[email] = {
+              name: '',
+              company: '',
+              found: false
+            };
+          }
+        });
+        continue;
+      }
+      
+      // Merge the results
+      Object.assign(results, data);
+      
+      // Store the results in our database
+      const dataToInsert = Object.entries(data).map(([email, result]) => ({
+        email,
+        name: result.name,
+        company: result.company,
+        linkedin: result.linkedin,
+        twitter: result.twitter,
+        found: result.found
+      }));
+      
+      if (dataToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('email_lookups')
+          .insert(dataToInsert);
+        
+        if (insertError) {
+          console.error('Error storing batch results:', insertError);
+        }
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('Batch lookup error:', error);
+    
+    // Return not found for all emails on error
+    const results: Record<string, EmailLookupResult> = {};
+    emails.forEach(email => {
       results[email] = {
         name: '',
         company: '',
         found: false
       };
-    }
+    });
+    
+    return results;
   }
-  
-  return results;
 };
