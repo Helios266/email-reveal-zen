@@ -6,6 +6,13 @@ interface EmailLookupResult {
   company: string;
   linkedin?: string;
   twitter?: string;
+  headline?: string;
+  location?: string;
+  summary?: string;
+  photoUrl?: string;
+  position?: any;
+  education?: any;
+  industry?: string;
   found: boolean;
 }
 
@@ -26,6 +33,13 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult> => 
         company: existingLookup.company || '',
         linkedin: existingLookup.linkedin || undefined,
         twitter: existingLookup.twitter || undefined,
+        headline: existingLookup.headline || undefined,
+        location: existingLookup.location || undefined,
+        summary: existingLookup.summary || undefined,
+        photoUrl: existingLookup.photo_url || undefined,
+        position: existingLookup.position || null,
+        education: existingLookup.education || null,
+        industry: existingLookup.industry || undefined,
         found: existingLookup.found
       };
     }
@@ -59,6 +73,13 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult> => 
         company: data.company,
         linkedin: data.linkedin,
         twitter: data.twitter,
+        headline: data.headline,
+        location: data.location,
+        summary: data.summary,
+        photo_url: data.photoUrl,
+        position: data.position,
+        education: data.education,
+        industry: data.industry,
         found: data.found,
         user_id: user.id
       });
@@ -104,6 +125,13 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
           company: lookup.company || '',
           linkedin: lookup.linkedin || undefined,
           twitter: lookup.twitter || undefined,
+          headline: lookup.headline || undefined,
+          location: lookup.location || undefined,
+          summary: lookup.summary || undefined,
+          photoUrl: lookup.photo_url || undefined,
+          position: lookup.position || null,
+          education: lookup.education || null,
+          industry: lookup.industry || undefined,
           found: lookup.found
         };
       });
@@ -155,6 +183,13 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
         company: result.company,
         linkedin: result.linkedin,
         twitter: result.twitter,
+        headline: result.headline,
+        location: result.location,
+        summary: result.summary,
+        photo_url: result.photoUrl,
+        position: result.position,
+        education: result.education,
+        industry: result.industry,
         found: result.found,
         user_id: user.id
       }));

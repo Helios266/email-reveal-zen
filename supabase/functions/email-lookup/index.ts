@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Content-Type": "application/json"
 };
-console.log("1111111111");
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -68,13 +68,21 @@ serve(async (req) => {
       console.log("API response:", JSON.stringify(data));
 
       // Format the response to match our application's expectations
+      // The new format provides more detailed information
       const formattedResponse = {
-        name: data.person?.full_name || 
-              (data.person?.firstName && data.person?.lastName ? 
-               `${data.person.firstName} ${data.person.lastName}` : '') || '',
+        name: data.person?.firstName && data.person?.lastName 
+          ? `${data.person.firstName} ${data.person.lastName}` 
+          : data.person?.full_name || '',
         company: data.company?.name || '',
         linkedin: data.person?.linkedInUrl || '',
         twitter: data.person?.twitter_url || '',
+        headline: data.person?.headline || '',
+        location: data.person?.location || '',
+        summary: data.person?.summary || '',
+        photoUrl: data.person?.photoUrl || '',
+        position: data.person?.positions?.positionHistory?.[0] || null,
+        education: data.person?.schools?.educationHistory?.[0] || null,
+        industry: data.company?.industry || '',
         found: !!data.person || false
       };
 
@@ -117,18 +125,32 @@ serve(async (req) => {
           if (response.ok) {
             const data = await response.json();
             results[email] = {
-              name: data.person?.full_name || 
-                    (data.person?.firstName && data.person?.lastName ? 
-                     `${data.person.firstName} ${data.person.lastName}` : '') || '',
+              name: data.person?.firstName && data.person?.lastName 
+                ? `${data.person.firstName} ${data.person.lastName}` 
+                : data.person?.full_name || '',
               company: data.company?.name || '',
               linkedin: data.person?.linkedInUrl || '',
               twitter: data.person?.twitter_url || '',
+              headline: data.person?.headline || '',
+              location: data.person?.location || '',
+              summary: data.person?.summary || '',
+              photoUrl: data.person?.photoUrl || '',
+              position: data.person?.positions?.positionHistory?.[0] || null,
+              education: data.person?.schools?.educationHistory?.[0] || null,
+              industry: data.company?.industry || '',
               found: !!data.person || false
             };
           } else {
             results[email] = {
               name: '',
               company: '',
+              headline: '',
+              location: '',
+              summary: '',
+              photoUrl: '',
+              position: null,
+              education: null,
+              industry: '',
               found: false
             };
           }
@@ -137,6 +159,13 @@ serve(async (req) => {
           results[email] = {
             name: '',
             company: '',
+            headline: '',
+            location: '',
+            summary: '',
+            photoUrl: '',
+            position: null,
+            education: null,
+            industry: '',
             found: false
           };
         }

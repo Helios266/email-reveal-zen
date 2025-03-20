@@ -8,14 +8,22 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { lookupEmail, lookupEmailBatch } from '@/services/emailLookupService';
 import { parseCSV, exportSingleResultToCSV, exportBatchResultsToCSV } from '@/utils/csvUtils';
-import { Search, Upload, Download, ExternalLink, FileText, Check } from 'lucide-react';
+import { Search, Upload, Download, ExternalLink, FileText, Check, User, Briefcase, MapPin, FileText as FileIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface LookupResult {
   name: string;
   company: string;
   linkedin?: string;
   twitter?: string;
+  headline?: string;
+  location?: string;
+  summary?: string;
+  photoUrl?: string;
+  position?: any;
+  education?: any;
+  industry?: string;
   found: boolean;
 }
 
@@ -198,24 +206,95 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   {searchResult.found ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="text-sm text-muted-foreground">{t('Name')}</div>
-                          <div className="font-medium">{searchResult.name}</div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="text-sm text-muted-foreground">{t('Company')}</div>
-                          <div className="font-medium">{searchResult.company}</div>
+                    <div className="space-y-6">
+                      <div className="flex items-start gap-4">
+                        <Avatar className="h-16 w-16">
+                          <AvatarImage src={searchResult.photoUrl} />
+                          <AvatarFallback>{searchResult.name ? searchResult.name.substring(0, 2).toUpperCase() : 'UN'}</AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-semibold">{searchResult.name}</h3>
+                          {searchResult.headline && (
+                            <p className="text-muted-foreground">{searchResult.headline}</p>
+                          )}
+                          {searchResult.location && (
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <MapPin className="mr-2 h-4 w-4" />
+                              {searchResult.location}
+                            </div>
+                          )}
                         </div>
                       </div>
                       
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">{t('Social Profile')}</div>
+                      {searchResult.summary && (
                         <div className="space-y-2">
+                          <div className="text-sm font-medium">{t('Summary')}</div>
+                          <p className="text-sm text-muted-foreground">{searchResult.summary}</p>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {searchResult.company && (
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium flex items-center">
+                              <Briefcase className="mr-2 h-4 w-4" />
+                              {t('Company')}
+                            </div>
+                            <div>
+                              <div className="font-medium">{searchResult.company}</div>
+                              {searchResult.industry && (
+                                <div className="text-sm text-muted-foreground">{searchResult.industry}</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {searchResult.position && (
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium">{t('Current Position')}</div>
+                            <div>
+                              <div className="font-medium">{searchResult.position.title}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {searchResult.position.companyName}
+                                {searchResult.position.startEndDate?.start?.year && (
+                                  <> • Since {searchResult.position.startEndDate.start.year}</>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {searchResult.education && (
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium flex items-center">
+                            <FileIcon className="mr-2 h-4 w-4" />
+                            {t('Education')}
+                          </div>
+                          <div>
+                            <div className="font-medium">{searchResult.education.schoolName}</div>
+                            {(searchResult.education.startEndDate?.start?.year || searchResult.education.startEndDate?.end?.year) && (
+                              <div className="text-sm text-muted-foreground">
+                                {searchResult.education.startEndDate?.start?.year && searchResult.education.startEndDate?.end?.year 
+                                  ? `${searchResult.education.startEndDate.start.year} - ${searchResult.education.startEndDate.end.year}`
+                                  : searchResult.education.startEndDate?.start?.year 
+                                    ? `Since ${searchResult.education.startEndDate.start.year}`
+                                    : searchResult.education.startEndDate?.end?.year 
+                                      ? `Until ${searchResult.education.startEndDate.end.year}`
+                                      : ''
+                                }
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">{t('Social Profiles')}</div>
+                        <div className="flex flex-wrap gap-3">
                           {searchResult.linkedin && (
                             <a
-                              href={`https://${searchResult.linkedin}`}
+                              href={searchResult.linkedin}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center text-primary hover:underline"
@@ -226,7 +305,7 @@ const Dashboard = () => {
                           )}
                           {searchResult.twitter && (
                             <a
-                              href={`https://${searchResult.twitter}`}
+                              href={searchResult.twitter}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center text-primary hover:underline"
@@ -333,7 +412,9 @@ const Dashboard = () => {
                             <th className="text-left p-3 font-medium text-muted-foreground">{t('Email')}</th>
                             <th className="text-left p-3 font-medium text-muted-foreground">{t('Name')}</th>
                             <th className="text-left p-3 font-medium text-muted-foreground">{t('Company')}</th>
-                            <th className="text-left p-3 font-medium text-muted-foreground">{t('Social Profile')}</th>
+                            <th className="text-left p-3 font-medium text-muted-foreground">{t('Position')}</th>
+                            <th className="text-left p-3 font-medium text-muted-foreground">{t('Location')}</th>
+                            <th className="text-left p-3 font-medium text-muted-foreground">{t('Social Profiles')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -342,11 +423,13 @@ const Dashboard = () => {
                               <td className="p-3">{email}</td>
                               <td className="p-3">{result.found ? result.name : '-'}</td>
                               <td className="p-3">{result.found ? result.company : '-'}</td>
+                              <td className="p-3">{result.found && result.position ? result.position.title : '-'}</td>
+                              <td className="p-3">{result.found ? result.location : '-'}</td>
                               <td className="p-3">
                                 <div className="flex space-x-2">
                                   {result.linkedin && (
                                     <a
-                                      href={`https://${result.linkedin}`}
+                                      href={result.linkedin}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex items-center text-primary hover:underline"
@@ -356,7 +439,7 @@ const Dashboard = () => {
                                   )}
                                   {result.twitter && (
                                     <a
-                                      href={`https://${result.twitter}`}
+                                      href={result.twitter}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex items-center text-primary hover:underline"
