@@ -7,6 +7,8 @@ const API_KEY = Deno.env.get("REVERSECONTACT_API_KEY");
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Content-Type": "application/json"
 };
 
 serve(async (req) => {
@@ -14,6 +16,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: corsHeaders,
+      status: 204
     });
   }
 
@@ -21,16 +24,16 @@ serve(async (req) => {
     // Parse request body
     const requestData = await req.json().catch(() => null);
     
-    if (req.method === "GET" || (requestData && requestData.email)) {
+    if (req.method === "POST" && requestData && requestData.email) {
       // Single email lookup
-      const email = requestData?.email;
+      const email = requestData.email;
       
       if (!email) {
         return new Response(
           JSON.stringify({ error: "Email parameter is required" }),
           { 
             status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+            headers: corsHeaders
           }
         );
       }
@@ -42,28 +45,33 @@ serve(async (req) => {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json"
         },
       });
 
-      const data = await response.json();
-      console.log("API response:", JSON.stringify(data));
-
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "API request failed" }));
+        console.error("API error:", JSON.stringify(errorData));
         return new Response(
           JSON.stringify({ 
             error: "API request failed", 
-            details: data 
+            details: errorData 
           }),
           { 
             status: response.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+            headers: corsHeaders
           }
         );
       }
 
+      const data = await response.json();
+      console.log("API response:", JSON.stringify(data));
+
       // Format the response to match our application's expectations
       const formattedResponse = {
-        name: data.person?.full_name || data.person?.firstName + " " + data.person?.lastName || '',
+        name: data.person?.full_name || 
+              (data.person?.firstName && data.person?.lastName ? 
+               `${data.person.firstName} ${data.person.lastName}` : '') || '',
         company: data.company?.name || '',
         linkedin: data.person?.linkedInUrl || '',
         twitter: data.person?.twitter_url || '',
@@ -72,9 +80,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify(formattedResponse),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        }
+        { headers: corsHeaders }
       );
     } else if (req.method === "POST" && requestData && requestData.emails) {
       // Batch email lookup
@@ -85,7 +91,7 @@ serve(async (req) => {
           JSON.stringify({ error: "Valid emails array is required" }),
           { 
             status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+            headers: corsHeaders
           }
         );
       }
@@ -99,19 +105,21 @@ serve(async (req) => {
       // Sequential processing to avoid rate limits
       for (const email of batch) {
         try {
-          const apiUrl = `${REVERSECONTACT_API_URL}?email=${encodeURIComponent(email)}`;
+          const apiUrl = `${REVERSECONTACT_API_URL}?apikey=${API_KEY}&email=${encodeURIComponent(email)}`;
           const response = await fetch(apiUrl, {
             method: "GET",
             headers: {
-              "Authorization": `Bearer ${API_KEY}`,
-              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Content-Type": "application/json"
             },
           });
 
           if (response.ok) {
             const data = await response.json();
             results[email] = {
-              name: data.person?.full_name || (data.person?.firstName && data.person?.lastName ? `${data.person.firstName} ${data.person.lastName}` : ''),
+              name: data.person?.full_name || 
+                    (data.person?.firstName && data.person?.lastName ? 
+                     `${data.person.firstName} ${data.person.lastName}` : '') || '',
               company: data.company?.name || '',
               linkedin: data.person?.linkedInUrl || '',
               twitter: data.person?.twitter_url || '',
@@ -139,26 +147,24 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify(results),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        }
+        { headers: corsHeaders }
       );
     }
     
     return new Response(
-      JSON.stringify({ error: "Method not allowed" }),
+      JSON.stringify({ error: "Method not allowed or invalid request format" }),
       { 
         status: 405,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: corsHeaders
       }
     );
   } catch (error) {
     console.error("Error in email-lookup function:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", message: error.message }),
       { 
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: corsHeaders
       }
     );
   }
