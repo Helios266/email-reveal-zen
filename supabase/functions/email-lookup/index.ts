@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Content-Type": "application/json"
 };
-
+console.log("1111111111");
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
