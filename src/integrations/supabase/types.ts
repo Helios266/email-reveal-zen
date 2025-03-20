@@ -46,33 +46,54 @@ export type Database = {
         Row: {
           company: string | null
           created_at: string
+          education: Json | null
           email: string
           found: boolean
+          headline: string | null
           id: string
+          industry: string | null
           linkedin: string | null
+          location: string | null
           name: string | null
+          photo_url: string | null
+          position: Json | null
+          summary: string | null
           twitter: string | null
           user_id: string
         }
         Insert: {
           company?: string | null
           created_at?: string
+          education?: Json | null
           email: string
           found?: boolean
+          headline?: string | null
           id?: string
+          industry?: string | null
           linkedin?: string | null
+          location?: string | null
           name?: string | null
+          photo_url?: string | null
+          position?: Json | null
+          summary?: string | null
           twitter?: string | null
           user_id: string
         }
         Update: {
           company?: string | null
           created_at?: string
+          education?: Json | null
           email?: string
           found?: boolean
+          headline?: string | null
           id?: string
+          industry?: string | null
           linkedin?: string | null
+          location?: string | null
           name?: string | null
+          photo_url?: string | null
+          position?: Json | null
+          summary?: string | null
           twitter?: string | null
           user_id?: string
         }
