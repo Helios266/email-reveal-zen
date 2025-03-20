@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { saveAs } from 'file-saver';
@@ -136,6 +135,118 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       variant: 'destructive',
     });
     return null;
+  }
+};
+
+export const lookupEmailBatch = async (emails: string[]): Promise<Record<string, any>> => {
+  try {
+    const results: Record<string, any> = {};
+    const user = await supabase.auth.getUser();
+    const userId = user.data.user?.id;
+
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+
+    // Process emails in batches to avoid overwhelming the server
+    const batchSize = 5;
+    for (let i = 0; i < emails.length; i += batchSize) {
+      const batch = emails.slice(i, i + batchSize);
+      
+      // Process each email in the current batch
+      await Promise.all(batch.map(async (email) => {
+        try {
+          // Check if email exists in DB first
+          const { data: existingData } = await supabase
+            .from('email_lookups')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+          if (existingData) {
+            results[email] = {
+              name: existingData.name,
+              company: existingData.company,
+              linkedin: existingData.linkedin,
+              twitter: existingData.twitter,
+              headline: existingData.headline,
+              location: existingData.location,
+              summary: existingData.summary,
+              photoUrl: existingData.photo_url,
+              position: existingData.position,
+              education: existingData.education,
+              industry: existingData.industry,
+              found: existingData.found
+            };
+            return;
+          }
+
+          // If not in DB, call the edge function
+          const { data, error } = await supabase.functions.invoke('email-lookup', {
+            body: { email }
+          });
+
+          if (error) {
+            console.error('Error looking up email:', error);
+            results[email] = { found: false };
+            return;
+          }
+
+          // Insert the result into the database
+          await supabase
+            .from('email_lookups')
+            .insert({
+              email,
+              name: data.name || null,
+              company: data.company || null,
+              linkedin: data.linkedin || null,
+              twitter: data.twitter || null,
+              headline: data.headline || null,
+              location: data.location || null,
+              summary: data.summary || null,
+              photo_url: data.photoUrl || null,
+              position: data.position || null,
+              education: data.education || null,
+              industry: data.industry || null,
+              found: data.found || false,
+              user_id: userId
+            });
+
+          results[email] = {
+            name: data.name,
+            company: data.company,
+            linkedin: data.linkedin,
+            twitter: data.twitter,
+            headline: data.headline,
+            location: data.location,
+            summary: data.summary,
+            photoUrl: data.photoUrl,
+            position: data.position,
+            education: data.education,
+            industry: data.industry,
+            found: data.found
+          };
+        } catch (error) {
+          console.error(`Error processing email ${email}:`, error);
+          results[email] = { found: false };
+        }
+      }));
+      
+      // Add a small delay between batches to prevent rate limiting
+      if (i + batchSize < emails.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error in batch email lookup:', error);
+    toast({
+      title: 'Batch Lookup Error',
+      description: error instanceof Error ? error.message : 'An unexpected error occurred',
+      variant: 'destructive',
+    });
+    return {};
   }
 };
 

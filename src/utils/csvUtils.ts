@@ -1,4 +1,3 @@
-
 import { saveAs } from 'file-saver';
 
 interface LookupResult {
@@ -59,6 +58,34 @@ export const parseCSV = (file: File): Promise<string[]> => {
     
     reader.readAsText(file);
   });
+};
+
+// Convert data to CSV format
+export const convertToCSV = (data: any[]): string => {
+  if (data.length === 0) {
+    return '';
+  }
+  
+  // Get headers from first object
+  const headers = Object.keys(data[0]);
+  const headerRow = headers.join(',');
+  
+  // Convert data to rows
+  const rows = data.map(item => {
+    return headers.map(header => {
+      const cell = item[header];
+      // Handle different data types
+      if (cell === null || cell === undefined) {
+        return '';
+      } else if (typeof cell === 'object') {
+        return JSON.stringify(cell).replace(/,/g, ';').replace(/"/g, '""');
+      } else {
+        return String(cell).replace(/,/g, ';').replace(/"/g, '""');
+      }
+    }).join(',');
+  });
+  
+  return [headerRow, ...rows].join('\r\n');
 };
 
 // Export single result to CSV
