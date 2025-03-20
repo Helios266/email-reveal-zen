@@ -1,224 +1,220 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { saveAs } from 'file-saver';
+import { convertToCSV } from '@/utils/csvUtils';
 
 interface EmailLookupResult {
-  name: string;
-  company: string;
-  linkedin?: string;
-  twitter?: string;
-  headline?: string;
-  location?: string;
-  summary?: string;
-  photoUrl?: string;
-  position?: any;
-  education?: any;
-  industry?: string;
+  id: string;
+  email: string;
+  name: string | null;
+  company: string | null;
+  linkedin: string | null;
+  twitter: string | null;
   found: boolean;
+  created_at: string;
+  user_id: string;
+  // New fields
+  headline: string | null;
+  location: string | null;
+  summary: string | null;
+  photo_url: string | null;
+  position: any | null;
+  education: any | null;
+  industry: string | null;
 }
 
-// Function to lookup an email using the Reverse Contact API via our Edge Function
-export const lookupEmail = async (email: string): Promise<EmailLookupResult> => {
+export const lookupEmail = async (email: string): Promise<EmailLookupResult | null> => {
   try {
-    // First, check if we already have this email in our database
-    const { data: existingLookup } = await supabase
+    // Check if email exists in DB first
+    const { data: existingData } = await supabase
       .from('email_lookups')
       .select('*')
       .eq('email', email)
       .single();
-    
-    if (existingLookup) {
-      console.log('Found existing lookup in database:', existingLookup);
+
+    if (existingData) {
+      console.log('Found existing email lookup:', existingData);
       return {
-        name: existingLookup.name || '',
-        company: existingLookup.company || '',
-        linkedin: existingLookup.linkedin || undefined,
-        twitter: existingLookup.twitter || undefined,
-        headline: existingLookup.headline || undefined,
-        location: existingLookup.location || undefined,
-        summary: existingLookup.summary || undefined,
-        photoUrl: existingLookup.photo_url || undefined,
-        position: existingLookup.position || null,
-        education: existingLookup.education || null,
-        industry: existingLookup.industry || undefined,
-        found: existingLookup.found
+        id: existingData.id,
+        email: existingData.email,
+        name: existingData.name,
+        company: existingData.company,
+        linkedin: existingData.linkedin,
+        twitter: existingData.twitter,
+        headline: existingData.headline,
+        location: existingData.location,
+        summary: existingData.summary,
+        photo_url: existingData.photo_url,
+        position: existingData.position,
+        education: existingData.education,
+        industry: existingData.industry,
+        found: existingData.found,
+        created_at: existingData.created_at,
+        user_id: existingData.user_id
       };
     }
-    
-    // Call our Supabase Edge Function
+
+    // If not in DB, call the edge function
+    const user = supabase.auth.getUser();
+    const userId = (await user).data.user?.id;
+
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+
+    // Call the edge function
     const { data, error } = await supabase.functions.invoke('email-lookup', {
-      method: 'POST',
       body: { email }
     });
 
     if (error) {
-      console.error('Edge function error:', error);
-      throw new Error(error.message);
+      console.error('Error looking up email:', error);
+      toast({
+        title: 'Lookup Error',
+        description: `Failed to lookup email: ${error.message}`,
+        variant: 'destructive',
+      });
+      return null;
     }
 
-    console.log('API lookup result:', data);
-    
-    // Get the current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-    
-    // Store the result in our database for future reference
-    const { error: insertError } = await supabase
+    // Insert the result into the database
+    const { data: insertedData, error: insertError } = await supabase
       .from('email_lookups')
       .insert({
         email,
-        name: data.name,
-        company: data.company,
-        linkedin: data.linkedin,
-        twitter: data.twitter,
-        headline: data.headline,
-        location: data.location,
-        summary: data.summary,
-        photo_url: data.photoUrl,
-        position: data.position,
-        education: data.education,
-        industry: data.industry,
-        found: data.found,
-        user_id: user.id
-      });
-    
+        name: data.name || null,
+        company: data.company || null,
+        linkedin: data.linkedin || null,
+        twitter: data.twitter || null,
+        headline: data.headline || null,
+        location: data.location || null,
+        summary: data.summary || null,
+        photo_url: data.photoUrl || null,
+        position: data.position || null,
+        education: data.education || null,
+        industry: data.industry || null,
+        found: data.found || false,
+        user_id: userId
+      })
+      .select('*')
+      .single();
+
     if (insertError) {
-      console.error('Error storing lookup result:', insertError);
+      console.error('Error saving email lookup data:', insertError);
+      toast({
+        title: 'Save Error',
+        description: `Failed to save lookup data: ${insertError.message}`,
+        variant: 'destructive',
+      });
+      return null;
     }
-    
-    return data as EmailLookupResult;
-  } catch (error) {
-    console.error('Email lookup error:', error);
-    // Return not found on error
+
     return {
-      name: '',
-      company: '',
-      found: false
+      id: insertedData.id,
+      email: insertedData.email,
+      name: insertedData.name,
+      company: insertedData.company,
+      linkedin: insertedData.linkedin,
+      twitter: insertedData.twitter,
+      headline: insertedData.headline,
+      location: insertedData.location,
+      summary: insertedData.summary,
+      photo_url: insertedData.photo_url,
+      position: insertedData.position,
+      education: insertedData.education,
+      industry: insertedData.industry,
+      found: insertedData.found,
+      created_at: insertedData.created_at,
+      user_id: insertedData.user_id
     };
+  } catch (error) {
+    console.error('Unexpected error in lookupEmail:', error);
+    toast({
+      title: 'Lookup Error',
+      description: error instanceof Error ? error.message : 'Unknown error occurred',
+      variant: 'destructive',
+    });
+    return null;
   }
 };
 
-// Function to process a batch of emails
-export const lookupEmailBatch = async (emails: string[]): Promise<Record<string, EmailLookupResult>> => {
+export const getRecentLookups = async (limit = 10): Promise<EmailLookupResult[]> => {
   try {
-    // Get the current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-    
-    // First, check which emails we already have in our database
-    const { data: existingLookups } = await supabase
+    const { data, error } = await supabase
       .from('email_lookups')
       .select('*')
-      .in('email', emails);
-    
-    // Create a map of existing lookups
-    const existingResults: Record<string, EmailLookupResult> = {};
-    if (existingLookups) {
-      existingLookups.forEach(lookup => {
-        existingResults[lookup.email] = {
-          name: lookup.name || '',
-          company: lookup.company || '',
-          linkedin: lookup.linkedin || undefined,
-          twitter: lookup.twitter || undefined,
-          headline: lookup.headline || undefined,
-          location: lookup.location || undefined,
-          summary: lookup.summary || undefined,
-          photoUrl: lookup.photo_url || undefined,
-          position: lookup.position || null,
-          education: lookup.education || null,
-          industry: lookup.industry || undefined,
-          found: lookup.found
-        };
-      });
-    }
-    
-    // Filter out emails we already have
-    const emailsToLookup = emails.filter(email => !existingResults[email]);
-    
-    if (emailsToLookup.length === 0) {
-      console.log('All emails already in database');
-      return existingResults;
-    }
-    
-    // Process emails in batches of 10
-    const results: Record<string, EmailLookupResult> = { ...existingResults };
-    
-    // Process in chunks of 10
-    for (let i = 0; i < emailsToLookup.length; i += 10) {
-      const batch = emailsToLookup.slice(i, i + 10);
-      
-      // Call our Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('email-lookup', {
-        method: 'POST',
-        body: { emails: batch }
-      });
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-      if (error) {
-        console.error('Edge function error for batch:', error);
-        // Fill in not found for the remaining emails
-        batch.forEach(email => {
-          if (!results[email]) {
-            results[email] = {
-              name: '',
-              company: '',
-              found: false
-            };
-          }
-        });
-        continue;
-      }
-      
-      // Merge the results
-      Object.assign(results, data);
-      
-      // Store the results in our database
-      const dataToInsert = Object.entries(data as Record<string, EmailLookupResult>).map(([email, result]) => ({
-        email,
-        name: result.name,
-        company: result.company,
-        linkedin: result.linkedin,
-        twitter: result.twitter,
-        headline: result.headline,
-        location: result.location,
-        summary: result.summary,
-        photo_url: result.photoUrl,
-        position: result.position,
-        education: result.education,
-        industry: result.industry,
-        found: result.found,
-        user_id: user.id
-      }));
-      
-      if (dataToInsert.length > 0) {
-        const { error: insertError } = await supabase
-          .from('email_lookups')
-          .insert(dataToInsert);
-        
-        if (insertError) {
-          console.error('Error storing batch results:', insertError);
-        }
-      }
+    if (error) {
+      throw error;
     }
-    
-    return results;
+
+    return data.map(item => ({
+      id: item.id,
+      email: item.email,
+      name: item.name,
+      company: item.company,
+      linkedin: item.linkedin,
+      twitter: item.twitter,
+      headline: item.headline,
+      location: item.location,
+      summary: item.summary,
+      photo_url: item.photo_url,
+      position: item.position,
+      education: item.education,
+      industry: item.industry,
+      found: item.found,
+      created_at: item.created_at,
+      user_id: item.user_id
+    }));
   } catch (error) {
-    console.error('Batch lookup error:', error);
-    
-    // Return not found for all emails on error
-    const results: Record<string, EmailLookupResult> = {};
-    emails.forEach(email => {
-      results[email] = {
-        name: '',
-        company: '',
-        found: false
-      };
+    console.error('Error fetching recent lookups:', error);
+    toast({
+      title: 'Fetch Error',
+      description: error instanceof Error ? error.message : 'Failed to fetch recent lookups',
+      variant: 'destructive',
     });
-    
-    return results;
+    return [];
+  }
+};
+
+export const exportToCSV = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('email_lookups')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data.length === 0) {
+      toast({
+        title: 'No Data',
+        description: 'There are no records to export.',
+        variant: 'default',
+      });
+      return;
+    }
+
+    const csvData = convertToCSV(data);
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8' });
+    saveAs(blob, `email-lookups-${new Date().toISOString().split('T')[0]}.csv`);
+
+    toast({
+      title: 'Export Successful',
+      description: `${data.length} records exported to CSV.`,
+      variant: 'default',
+    });
+  } catch (error) {
+    console.error('Error exporting to CSV:', error);
+    toast({
+      title: 'Export Error',
+      description: error instanceof Error ? error.message : 'Failed to export data',
+      variant: 'destructive',
+    });
   }
 };
