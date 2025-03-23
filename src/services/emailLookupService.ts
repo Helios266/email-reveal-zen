@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { saveAs } from 'file-saver';
 import { convertToCSV } from '@/utils/csvUtils';
 
@@ -54,13 +55,20 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       };
     }
 
-    // If not in DB, call the edge function
-    const user = supabase.auth.getUser();
-    const userId = (await user).data.user?.id;
-
-    if (!userId) {
+    // Get the current user session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // If no session, handle the authentication error
+    if (!session) {
+      toast({
+        title: 'Authentication Error',
+        description: 'You need to be logged in to perform this action',
+        variant: 'destructive',
+      });
       throw new Error('User not authenticated');
     }
+    
+    const userId = session.user.id;
 
     // Call the edge function
     const { data, error } = await supabase.functions.invoke('email-lookup', {
@@ -141,12 +149,21 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
 export const lookupEmailBatch = async (emails: string[]): Promise<Record<string, any>> => {
   try {
     const results: Record<string, any> = {};
-    const user = await supabase.auth.getUser();
-    const userId = user.data.user?.id;
-
-    if (!userId) {
+    
+    // Get the current user session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // If no session, handle the authentication error
+    if (!session) {
+      toast({
+        title: 'Authentication Error',
+        description: 'You need to be logged in to perform this action',
+        variant: 'destructive',
+      });
       throw new Error('User not authenticated');
     }
+    
+    const userId = session.user.id;
 
     // Process emails in batches to avoid overwhelming the server
     const batchSize = 5;

@@ -1,49 +1,25 @@
-import { saveAs } from 'file-saver';
 
-interface LookupResult {
-  name: string;
-  company: string;
-  linkedin?: string;
-  twitter?: string;
-  found: boolean;
-}
+import Papa from 'papaparse';
 
-// Parse CSV file
 export const parseCSV = (file: File): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
-    reader.onload = (event) => {
+    reader.onload = (e) => {
+      if (!e.target || !e.target.result) {
+        reject(new Error('Failed to read CSV file'));
+        return;
+      }
+      
       try {
-        const csvText = event.target?.result as string;
-        const lines = csvText.split(/\r\n|\n/);
-        
-        // Check if header exists and has "email" field
-        const header = lines[0].toLowerCase();
-        if (!header.includes('email')) {
-          throw new Error('CSV file must have an "email" column');
-        }
-        
-        // Find email column index
-        const headerCols = header.split(',');
-        const emailColIndex = headerCols.findIndex(col => col.trim() === 'email');
-        
-        if (emailColIndex === -1) {
-          throw new Error('CSV file must have an "email" column');
-        }
-        
-        // Extract emails
+        const csv = Papa.parse(e.target.result as string, { header: true });
         const emails: string[] = [];
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue; // Skip empty lines
-          
-          const cols = lines[i].split(',');
-          if (cols.length > emailColIndex) {
-            const email = cols[emailColIndex].trim();
-            if (email && /\S+@\S+\.\S+/.test(email)) {
-              emails.push(email);
+        
+        if (csv.data && csv.data.length > 0) {
+          csv.data.forEach((row: any) => {
+            if (row.email && /\S+@\S+\.\S+/.test(row.email)) {
+              emails.push(row.email);
             }
-          }
+          });
         }
         
         resolve(emails);
@@ -53,75 +29,87 @@ export const parseCSV = (file: File): Promise<string[]> => {
     };
     
     reader.onerror = () => {
-      reject(new Error('Failed to read file'));
+      reject(new Error('Error reading file'));
     };
     
     reader.readAsText(file);
   });
 };
 
-// Convert data to CSV format
-export const convertToCSV = (data: any[]): string => {
-  if (data.length === 0) {
-    return '';
-  }
-  
-  // Get headers from first object
-  const headers = Object.keys(data[0]);
-  const headerRow = headers.join(',');
-  
-  // Convert data to rows
-  const rows = data.map(item => {
-    return headers.map(header => {
-      const cell = item[header];
-      // Handle different data types
-      if (cell === null || cell === undefined) {
-        return '';
-      } else if (typeof cell === 'object') {
-        return JSON.stringify(cell).replace(/,/g, ';').replace(/"/g, '""');
-      } else {
-        return String(cell).replace(/,/g, ';').replace(/"/g, '""');
-      }
-    }).join(',');
-  });
-  
-  return [headerRow, ...rows].join('\r\n');
-};
-
-// Export single result to CSV
-export const exportSingleResultToCSV = (email: string, result: LookupResult) => {
-  const headers = ['email', 'name', 'company', 'linkedin', 'twitter', 'found'];
-  const data = [
+export const exportSingleResultToCSV = (email: string, result: any) => {
+  const data = [{
     email,
-    result.name || '',
-    result.company || '',
-    result.linkedin || '',
-    result.twitter || '',
-    result.found ? 'Yes' : 'No'
-  ];
+    name: result.name || '',
+    company: result.company || '',
+    position: result.position?.title || '',
+    location: result.location || '',
+    linkedin: result.linkedin || '',
+    twitter: result.twitter || '',
+    headline: result.headline || '',
+    summary: result.summary || '',
+    industry: result.industry || '',
+    found: result.found ? 'Yes' : 'No'
+  }];
   
-  const csvContent = headers.join(',') + '\r\n' + data.join(',');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-  saveAs(blob, `email_lookup_${email.replace('@', '_at_')}.csv`);
+  const csv = Papa.unparse(data);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const filename = `email-lookup-${email.replace('@', '-at-')}-${new Date().toISOString().split('T')[0]}.csv`;
+  
+  saveAs(blob, filename);
 };
 
-// Export batch results to CSV
-export const exportBatchResultsToCSV = (results: Record<string, LookupResult>) => {
-  const headers = ['email', 'name', 'company', 'linkedin', 'twitter', 'found'];
-  let csvContent = headers.join(',') + '\r\n';
+export const exportBatchResultsToCSV = (results: Record<string, any>) => {
+  const data = Object.entries(results).map(([email, result]) => ({
+    email,
+    name: result.name || '',
+    company: result.company || '',
+    position: result.position?.title || '',
+    location: result.location || '',
+    linkedin: result.linkedin || '',
+    twitter: result.twitter || '',
+    headline: result.headline || '',
+    summary: result.summary || '',
+    industry: result.industry || '',
+    found: result.found ? 'Yes' : 'No'
+  }));
   
-  Object.entries(results).forEach(([email, result]) => {
-    const row = [
-      email,
-      result.name || '',
-      result.company || '',
-      result.linkedin || '',
-      result.twitter || '',
-      result.found ? 'Yes' : 'No'
-    ];
-    csvContent += row.join(',') + '\r\n';
-  });
+  const csv = Papa.unparse(data);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const filename = `email-lookups-batch-${new Date().toISOString().split('T')[0]}.csv`;
   
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-  saveAs(blob, `batch_email_lookup_${new Date().toISOString().slice(0, 10)}.csv`);
+  saveAs(blob, filename);
 };
+
+export const convertToCSV = (data: any[]) => {
+  // Format data to make it more readable in CSV
+  const formattedData = data.map(item => ({
+    email: item.email,
+    name: item.name || '',
+    company: item.company || '',
+    position: item.position?.title || '',
+    headline: item.headline || '',
+    location: item.location || '',
+    industry: item.industry || '',
+    linkedin: item.linkedin || '',
+    twitter: item.twitter || '',
+    found: item.found ? 'Yes' : 'No',
+    created_at: new Date(item.created_at).toISOString().split('T')[0],
+  }));
+  
+  return Papa.unparse(formattedData);
+};
+
+function saveAs(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  
+  // Clean up
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
