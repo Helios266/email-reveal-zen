@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const REVERSECONTACT_API_URL = "https://api.reversecontact.com/enrichment";
-const API_KEY = Deno.env.get("REVERSECONTACT_API_KEY");
+const API_KEY = "sk_ed141ea25d06d0de6d9aaaac44a5712b4ca03f24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
