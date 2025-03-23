@@ -60,11 +60,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
     
     // If no session, handle the authentication error
     if (!session) {
-      toast({
-        title: 'Authentication Error',
-        description: 'You need to be logged in to perform this action',
-        variant: 'destructive',
-      });
+      toast.error('Authentication Error: You need to be logged in to perform this action');
       throw new Error('User not authenticated');
     }
     
@@ -77,11 +73,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
 
     if (error) {
       console.error('Error looking up email:', error);
-      toast({
-        title: 'Lookup Error',
-        description: `Failed to lookup email: ${error.message}`,
-        variant: 'destructive',
-      });
+      toast.error(`Lookup Error: Failed to lookup email: ${error.message}`);
       return null;
     }
 
@@ -109,11 +101,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
 
     if (insertError) {
       console.error('Error saving email lookup data:', insertError);
-      toast({
-        title: 'Save Error',
-        description: `Failed to save lookup data: ${insertError.message}`,
-        variant: 'destructive',
-      });
+      toast.error(`Save Error: Failed to save lookup data: ${insertError.message}`);
       return null;
     }
 
@@ -137,11 +125,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
     };
   } catch (error) {
     console.error('Unexpected error in lookupEmail:', error);
-    toast({
-      title: 'Lookup Error',
-      description: error instanceof Error ? error.message : 'Unknown error occurred',
-      variant: 'destructive',
-    });
+    toast.error(error instanceof Error ? error.message : 'Unknown error occurred');
     return null;
   }
 };
@@ -155,11 +139,7 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
     
     // If no session, handle the authentication error
     if (!session) {
-      toast({
-        title: 'Authentication Error',
-        description: 'You need to be logged in to perform this action',
-        variant: 'destructive',
-      });
+      toast.error('Authentication Error: You need to be logged in to perform this action');
       throw new Error('User not authenticated');
     }
     
@@ -258,11 +238,7 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
     return results;
   } catch (error) {
     console.error('Error in batch email lookup:', error);
-    toast({
-      title: 'Batch Lookup Error',
-      description: error instanceof Error ? error.message : 'An unexpected error occurred',
-      variant: 'destructive',
-    });
+    toast.error(error instanceof Error ? error.message : 'An unexpected error occurred');
     return {};
   }
 };
@@ -299,11 +275,7 @@ export const getRecentLookups = async (limit = 10): Promise<EmailLookupResult[]>
     }));
   } catch (error) {
     console.error('Error fetching recent lookups:', error);
-    toast({
-      title: 'Fetch Error',
-      description: error instanceof Error ? error.message : 'Failed to fetch recent lookups',
-      variant: 'destructive',
-    });
+    toast.error(error instanceof Error ? error.message : 'Failed to fetch recent lookups');
     return [];
   }
 };
@@ -320,11 +292,7 @@ export const exportToCSV = async () => {
     }
 
     if (data.length === 0) {
-      toast({
-        title: 'No Data',
-        description: 'There are no records to export.',
-        variant: 'default',
-      });
+      toast.info('No Data: There are no records to export.');
       return;
     }
 
@@ -332,17 +300,9 @@ export const exportToCSV = async () => {
     const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8' });
     saveAs(blob, `email-lookups-${new Date().toISOString().split('T')[0]}.csv`);
 
-    toast({
-      title: 'Export Successful',
-      description: `${data.length} records exported to CSV.`,
-      variant: 'default',
-    });
+    toast.success(`Export Successful: ${data.length} records exported to CSV.`);
   } catch (error) {
     console.error('Error exporting to CSV:', error);
-    toast({
-      title: 'Export Error',
-      description: error instanceof Error ? error.message : 'Failed to export data',
-      variant: 'destructive',
-    });
+    toast.error(error instanceof Error ? error.message : 'Failed to export data');
   }
 };
