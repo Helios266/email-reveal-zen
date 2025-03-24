@@ -5,9 +5,10 @@ import { Spinner } from '@/components/ui/spinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  allowUnauthenticated?: boolean; // New prop to allow unauthenticated access
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, allowUnauthenticated = false }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -19,11 +20,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Allow access if authentication is not required or user is authenticated
+  if (allowUnauthenticated || user) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return <Navigate to="/login" state={{ from: location }} replace />;
 };
 
 export default ProtectedRoute;

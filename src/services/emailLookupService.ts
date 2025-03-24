@@ -13,7 +13,7 @@ interface EmailLookupResult {
   twitter: string | null;
   found: boolean;
   created_at: string;
-  user_id: string;
+  user_id: string | null; // Changed to nullable
   // New fields
   headline: string | null;
   location: string | null;
@@ -55,18 +55,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       };
     }
 
-    // Get the current user session
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    // If no session, handle the authentication error
-    if (!session) {
-      toast.error('Authentication Error: You need to be logged in to perform this action');
-      throw new Error('User not authenticated');
-    }
-    
-    const userId = session.user.id;
-
-    // Call the edge function
+    // Call the edge function - no authentication required
     const { data, error } = await supabase.functions.invoke('email-lookup', {
       body: { email }
     });
@@ -77,7 +66,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       return null;
     }
 
-    // Insert the result into the database
+    // Insert the result into the database - no user_id required
     const { data: insertedData, error: insertError } = await supabase
       .from('email_lookups')
       .insert({
@@ -94,7 +83,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
         education: data.education || null,
         industry: data.industry || null,
         found: data.found || false,
-        user_id: userId
+        user_id: null // Set to null since we don't require authentication
       })
       .select('*')
       .single();
@@ -134,17 +123,6 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
   try {
     const results: Record<string, any> = {};
     
-    // Get the current user session
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    // If no session, handle the authentication error
-    if (!session) {
-      toast.error('Authentication Error: You need to be logged in to perform this action');
-      throw new Error('User not authenticated');
-    }
-    
-    const userId = session.user.id;
-
     // Process emails in batches to avoid overwhelming the server
     const batchSize = 5;
     for (let i = 0; i < emails.length; i += batchSize) {
@@ -178,7 +156,7 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
             return;
           }
 
-          // If not in DB, call the edge function
+          // If not in DB, call the edge function - no authentication required
           const { data, error } = await supabase.functions.invoke('email-lookup', {
             body: { email }
           });
@@ -189,7 +167,7 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
             return;
           }
 
-          // Insert the result into the database
+          // Insert the result into the database - no user_id required
           await supabase
             .from('email_lookups')
             .insert({
@@ -206,7 +184,7 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
               education: data.education || null,
               industry: data.industry || null,
               found: data.found || false,
-              user_id: userId
+              user_id: null // Set to null since we don't require authentication
             });
 
           results[email] = {
