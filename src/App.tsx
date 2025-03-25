@@ -32,15 +32,15 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               
-              {/* Redirect root to login */}
-              <Route path="/" element={<Navigate to="/login" />} />
+              {/* Redirect root to dashboard */}
+              <Route path="/" element={<Navigate to="/dashboard" />} />
               
-              {/* Protected routes */}
+              {/* Protected routes with public access to dashboard */}
               <Route path="/" element={<AppLayout />}>
                 <Route 
                   path="/dashboard" 
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute allowUnauthenticated={true}>
                       <Dashboard />
                     </ProtectedRoute>
                   } 

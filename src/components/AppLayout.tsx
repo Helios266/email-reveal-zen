@@ -3,13 +3,12 @@ import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { LogOut, Globe } from 'lucide-react';
+import { LogOut, Globe, LogIn } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const AppLayout = () => {
   const { user, signOut } = useAuth();
   const { t, language, toggleLanguage } = useLanguage();
-
-  if (!user) return <Outlet />;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -49,14 +48,26 @@ const AppLayout = () => {
             <Globe className="mr-2 h-4 w-4" />
             {language === 'ja' ? t('Switch to English') : t('Switch to Japanese')}
           </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start"
-            onClick={() => signOut()}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            {t('Log Out')}
-          </Button>
+          {user ? (
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => signOut()}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              {t('Log Out')}
+            </Button>
+          ) : (
+            <Link to="/login">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <LogIn className="mr-2 h-4 w-4" />
+                {t('Log In')}
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -65,7 +76,11 @@ const AppLayout = () => {
         <header className="h-14 border-b flex items-center justify-between px-4 bg-white">
           <div className="md:hidden font-semibold text-lg text-primary">Reverse Email Lookup</div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{t('Welcome')}, {user.name}</span>
+            {user ? (
+              <span className="text-sm text-gray-600">{t('Welcome')}, {user.name}</span>
+            ) : (
+              <span className="text-sm text-gray-600">{t('Welcome')}, {t('Guest')}</span>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -74,14 +89,26 @@ const AppLayout = () => {
             >
               <Globe className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
-              onClick={() => signOut()}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            {user ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden"
+                onClick={() => signOut()}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Link to="/login">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="md:hidden"
+                >
+                  <LogIn className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
           </div>
         </header>
         <main className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">

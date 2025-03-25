@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -147,7 +146,9 @@ const Dashboard = () => {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold tracking-tight">{t('Dashboard')}</h1>
-      <p className="text-muted-foreground">{t('Welcome')}, {user?.name}.</p>
+      <p className="text-muted-foreground">
+        {user ? `${t('Welcome')}, ${user.name}.` : `${t('Welcome')}, ${t('Guest')}.`}
+      </p>
       
       <Tabs defaultValue="single" className="w-full">
         <TabsList className="mb-6">

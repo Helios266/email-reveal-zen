@@ -59,7 +59,7 @@ export type Database = {
           position: Json | null
           summary: string | null
           twitter: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           company?: string | null
@@ -77,7 +77,7 @@ export type Database = {
           position?: Json | null
           summary?: string | null
           twitter?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           company?: string | null
@@ -95,7 +95,7 @@ export type Database = {
           position?: Json | null
           summary?: string | null
           twitter?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
