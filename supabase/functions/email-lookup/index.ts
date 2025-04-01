@@ -213,8 +213,8 @@ serve(async (req) => {
 
       console.log(`Looking up email: ${email}`);
       
-      Use mock data during development
-      In production, use the real API call
+      //Use mock data during development
+      //In production, use the real API call
       const apiUrl = `${REVERSECONTACT_API_URL}?apikey=${API_KEY}&email=${encodeURIComponent(email)}`;
       const response = await fetch(apiUrl, {
         method: "GET",
