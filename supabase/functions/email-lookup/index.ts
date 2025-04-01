@@ -213,37 +213,37 @@ serve(async (req) => {
 
       console.log(`Looking up email: ${email}`);
       
-      // Use mock data during development
-      // In production, use the real API call
-      // const apiUrl = `${REVERSECONTACT_API_URL}?apikey=${API_KEY}&email=${encodeURIComponent(email)}`;
-      // const response = await fetch(apiUrl, {
-      //   method: "GET",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     "Accept": "application/json"
-      //   },
-      // });
-      // 
-      // if (!response.ok) {
-      //   const errorData = await response.json().catch(() => ({ message: "API request failed" }));
-      //   console.error("API error:", JSON.stringify(errorData));
-      //   return new Response(
-      //     JSON.stringify({ 
-      //       error: "API request failed", 
-      //       details: errorData 
-      //     }),
-      //     { 
-      //       status: response.status,
-      //       headers: corsHeaders
-      //     }
-      //   );
-      // }
-      // 
-      // const data = await response.json();
+      Use mock data during development
+      In production, use the real API call
+      const apiUrl = `${REVERSECONTACT_API_URL}?apikey=${API_KEY}&email=${encodeURIComponent(email)}`;
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+      });
       
-      // Use mock data instead
-      const data = MOCK_DATA;
-      console.log("Using mock data for email:", email);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "API request failed" }));
+        console.error("API error:", JSON.stringify(errorData));
+        return new Response(
+          JSON.stringify({ 
+            error: "API request failed", 
+            details: errorData 
+          }),
+          { 
+            status: response.status,
+            headers: corsHeaders
+          }
+        );
+      }
+      
+      const data = await response.json();
+      
+      // // Use mock data instead
+      // const data = MOCK_DATA;
+      // console.log("Using mock data for email:", email);
 
       // Format the response to match our application's expectations
       const formattedResponse = {
