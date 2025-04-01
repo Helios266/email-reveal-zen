@@ -18,28 +18,28 @@ const AppLayout = () => {
       <div className="w-64 bg-white border-r border-gray-200 min-h-screen hidden md:flex md:flex-col justify-between animate-fade-in">
         <div>
           <div className="flex h-14 items-center border-b px-4">
-            <div className="font-semibold text-lg text-primary">Reverse Email Lookup</div>
+            <div className="font-semibold text-lg text-primary">Email Lookup</div>
           </div>
           <div className="py-4">
             <nav className="space-y-1 px-2">
-              <a 
-                href="/dashboard" 
+              <Link 
+                to="/dashboard" 
                 className="flex items-center px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 hover:text-primary animated-border"
               >
                 <span>{t('Dashboard')}</span>
-              </a>
-              <a 
-                href="/dashboard" 
+              </Link>
+              <Link 
+                to="/dashboard" 
                 className="flex items-center px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 hover:text-primary animated-border"
               >
                 <span>{t('Single Email Lookup')}</span>
-              </a>
-              <a 
-                href="/dashboard" 
+              </Link>
+              <Link 
+                to="/dashboard" 
                 className="flex items-center px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 hover:text-primary animated-border"
               >
                 <span>{t('Bulk Email Processing')}</span>
-              </a>
+              </Link>
             </nav>
           </div>
         </div>
@@ -81,27 +81,27 @@ const AppLayout = () => {
       {mobileMenuOpen && (
         <div className="absolute top-14 left-0 right-0 bg-white z-50 border-b md:hidden animate-slide-in-bottom">
           <nav className="py-2 px-4">
-            <a 
-              href="/dashboard" 
+            <Link 
+              to="/dashboard" 
               className="block px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 hover:text-primary"
               onClick={() => setMobileMenuOpen(false)}
             >
               <span>{t('Dashboard')}</span>
-            </a>
-            <a 
-              href="/dashboard" 
+            </Link>
+            <Link 
+              to="/dashboard" 
               className="block px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 hover:text-primary"
               onClick={() => setMobileMenuOpen(false)}
             >
               <span>{t('Single Email Lookup')}</span>
-            </a>
-            <a 
-              href="/dashboard" 
+            </Link>
+            <Link 
+              to="/dashboard" 
               className="block px-3 py-2 text-sm rounded-md text-gray-700 hover:bg-gray-100 hover:text-primary"
               onClick={() => setMobileMenuOpen(false)}
             >
               <span>{t('Bulk Email Processing')}</span>
-            </a>
+            </Link>
           </nav>
         </div>
       )}
@@ -118,7 +118,7 @@ const AppLayout = () => {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="md:hidden font-semibold text-lg text-primary">Reverse Email Lookup</div>
+            <div className="md:hidden font-semibold text-lg text-primary">Email Lookup</div>
           </div>
           <div className="flex items-center gap-4">
             {user ? (
