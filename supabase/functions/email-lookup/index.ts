@@ -11,7 +11,7 @@ const corsHeaders = {
   "Content-Type": "application/json"
 };
 
-// Mock data for development
+// Mock data for development - commented out as per request
 const MOCK_DATA = {
   "success": true,
   "email": "bill.gates@microsoft.com",
@@ -213,8 +213,7 @@ serve(async (req) => {
 
       console.log(`Looking up email: ${email}`);
       
-      //Use mock data during development
-      //In production, use the real API call
+      // Use the real API call
       const apiUrl = `${REVERSECONTACT_API_URL}?apikey=${API_KEY}&email=${encodeURIComponent(email)}`;
       const response = await fetch(apiUrl, {
         method: "GET",
@@ -240,11 +239,8 @@ serve(async (req) => {
       }
       
       const data = await response.json();
+      console.log("API response:", JSON.stringify(data));
       
-      // // Use mock data instead
-      // const data = MOCK_DATA;
-      // console.log("Using mock data for email:", email);
-
       // Format the response to match our application's expectations
       const formattedResponse = {
         name: data.person?.firstName && data.person?.lastName 
@@ -287,16 +283,38 @@ serve(async (req) => {
       
       const results: Record<string, any> = {};
       
-      // Use mock data for all emails
+      // Process each email in the batch with real API
       for (const email of batch) {
         try {
-          // In a real implementation, we would call the API
-          // const apiUrl = `${REVERSECONTACT_API_URL}?apikey=${API_KEY}&email=${encodeURIComponent(email)}`;
-          // const response = await fetch(apiUrl, { ... });
+          // Call the real API
+          const apiUrl = `${REVERSECONTACT_API_URL}?apikey=${API_KEY}&email=${encodeURIComponent(email)}`;
+          const response = await fetch(apiUrl, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+          });
           
-          // Use mock data instead
-          const data = MOCK_DATA;
-          console.log("Using mock data for email:", email);
+          if (!response.ok) {
+            console.error(`API error for email ${email}:`, await response.text());
+            results[email] = {
+              name: '',
+              company: '',
+              headline: '',
+              location: '',
+              summary: '',
+              photoUrl: '',
+              position: null,
+              education: null,
+              industry: '',
+              found: false
+            };
+            continue;
+          }
+          
+          const data = await response.json();
+          console.log(`API response for ${email}:`, JSON.stringify(data));
           
           results[email] = {
             name: data.person?.firstName && data.person?.lastName 
@@ -330,8 +348,8 @@ serve(async (req) => {
           };
         }
         
-        // Add a small delay between requests
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Add a small delay between requests to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
       return new Response(
