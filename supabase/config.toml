@@ -58,9 +58,5 @@ port = 54327
 vector_port = 54328
 backend = "postgres"
 
-[experimental]
-events_enabled = false
-traces_enabled = false
-
 [functions.search-profile]
 verify_jwt = false
