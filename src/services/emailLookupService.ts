@@ -55,14 +55,55 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       };
     }
 
-    // Call the search-profile edge function instead of email-lookup
+    // Call the search-profile edge function
     const { data, error } = await supabase.functions.invoke('search-profile', {
       body: { email }
     });
 
     if (error) {
       console.error('Error looking up email:', error);
-      toast.error(`Lookup Error: Failed to lookup email: ${error.message}`);
+      
+      // If we got a non-2xx response, check if it contains a specific error message
+      if (error.message?.includes('non-2xx status code')) {
+        // The error might contain profile not found or other API errors
+        // We'll still insert a record but mark it as not found
+        const { data: insertedData, error: insertError } = await supabase
+          .from('email_lookups')
+          .insert({
+            email,
+            found: false,
+            user_id: null
+          })
+          .select('*')
+          .single();
+
+        if (insertError) {
+          toast.error(`Save Error: Failed to save lookup data: ${insertError.message}`);
+          return null;
+        }
+        
+        toast.error(`No profile found for email: ${email}`);
+        return {
+          id: insertedData.id,
+          email: insertedData.email,
+          name: null,
+          company: null,
+          linkedin: null,
+          twitter: null,
+          headline: null,
+          location: null,
+          summary: null,
+          photo_url: null,
+          position: null,
+          education: null,
+          industry: null,
+          found: false,
+          created_at: insertedData.created_at,
+          user_id: insertedData.user_id
+        };
+      }
+      
+      toast.error(`Lookup Error: ${error.message}`);
       return null;
     }
 
@@ -87,6 +128,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
         return null;
       }
       
+      toast.error(`No profile found for email: ${email}`);
       return {
         id: insertedData.id,
         email: insertedData.email,

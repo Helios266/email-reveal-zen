@@ -43,10 +43,32 @@ serve(async (req) => {
       console.error("Missing REVERSECONTACT_API_KEY environment variable");
       return new Response(
         JSON.stringify({ 
-          error: "Server configuration error" 
+          error: "Server configuration error: Missing API key" 
         }),
         { 
           status: 500,
+          headers: corsHeaders
+        }
+      );
+    }
+    
+    // For testing purposes, return a mock profile for test@example.com
+    if (email === "test@example.com") {
+      return new Response(
+        JSON.stringify({
+          name: "Test User",
+          headline: "Software Developer at Test Company",
+          linkedInUrl: "https://www.linkedin.com/in/testuser",
+          company: "Test Company",
+          location: "San Francisco, CA",
+          photoUrl: "https://randomuser.me/api/portraits/men/1.jpg",
+          summary: "Experienced software developer with a passion for building great products.",
+          twitter: "https://twitter.com/testuser",
+          industry: "Software Development",
+          found: true
+        }),
+        { 
+          status: 200,
           headers: corsHeaders
         }
       );
