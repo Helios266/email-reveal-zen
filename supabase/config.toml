@@ -30,14 +30,8 @@ site_url = "http://localhost:3000"
 [analytics]
 enabled = false
 
-[experimental]
-tracing = {enabled = false, provider = "otlp", endpoint = "http://localhost:4317"}
-multilanguage = {enabled = false}
-
-[[functions]]
-name = "email-lookup"
+[functions.email-lookup]
 verify_jwt = false
 
-[[functions]]
-name = "search-profile"
+[functions.search-profile]
 verify_jwt = false
