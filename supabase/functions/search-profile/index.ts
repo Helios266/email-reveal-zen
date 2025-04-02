@@ -8,43 +8,6 @@ const corsHeaders = {
   "Content-Type": "application/json"
 };
 
-// Mock data - in a real implementation this would query an external API or database
-const mockProfiles = {
-  "bill.gates@microsoft.com": {
-    name: "Bill Gates",
-    headline: "Co-chair, Bill & Melinda Gates Foundation",
-    linkedInUrl: "https://www.linkedin.com/in/williamhgates",
-    company: "Microsoft",
-    location: "Seattle, Washington",
-    photoUrl: "https://media.licdn.com/dms/image/D5603AQHv6LsdiUg1kw/profile-displayphoto-shrink_800_800/0/1695167344576?e=1723680000&v=beta&t=NcEpysYwCpQ_NBg0QTz_a265pEOhfGICFJUX92-KNpw",
-    summary: "Co-chair of the Bill & Melinda Gates Foundation. Founder of Breakthrough Energy. Co-founder of Microsoft.",
-    twitter: "https://twitter.com/BillGates",
-    industry: "Software Development"
-  },
-  "elon.musk@tesla.com": {
-    name: "Elon Musk",
-    headline: "CEO of Tesla and SpaceX",
-    linkedInUrl: "https://www.linkedin.com/in/elonmusk",
-    company: "Tesla",
-    location: "Austin, Texas",
-    photoUrl: "https://example.com/elon_musk.jpg",
-    summary: "Entrepreneur and business magnate.",
-    twitter: "https://twitter.com/elonmusk",
-    industry: "Automotive and Aerospace"
-  },
-  "satya.nadella@microsoft.com": {
-    name: "Satya Nadella",
-    headline: "CEO of Microsoft",
-    linkedInUrl: "https://www.linkedin.com/in/satyanadella",
-    company: "Microsoft",
-    location: "Redmond, Washington",
-    photoUrl: "https://example.com/satya_nadella.jpg",
-    summary: "Business executive serving as the chairman and CEO of Microsoft.",
-    twitter: "https://twitter.com/satyanadella",
-    industry: "Software Development"
-  }
-};
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -73,11 +36,64 @@ serve(async (req) => {
     const email = requestData.email;
     console.log(`Looking up profile for email: ${email}`);
     
-    // In a real implementation, this would be a call to an external API or database
-    // For this example, we'll use mock data
-    const profile = mockProfiles[email.toLowerCase()];
+    // Get the API key from environment variables
+    const apiKey = Deno.env.get("REVERSECONTACT_API_KEY");
     
-    if (!profile) {
+    if (!apiKey) {
+      console.error("Missing REVERSECONTACT_API_KEY environment variable");
+      return new Response(
+        JSON.stringify({ 
+          error: "Server configuration error" 
+        }),
+        { 
+          status: 500,
+          headers: corsHeaders
+        }
+      );
+    }
+    
+    // Make API request to ReverseContact API
+    const response = await fetch("https://api.reversecontact.com/enrichment/linkedin", {
+      method: "POST",
+      headers: {
+        "X-Api-Key": apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error(`API response error (${response.status}):`, errorData);
+      
+      // Check if it's a "not found" response from the API
+      if (response.status === 404 || errorData.includes("not found")) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Profile not found" 
+          }),
+          { 
+            status: 404,
+            headers: corsHeaders
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: `API error: ${response.status}` 
+        }),
+        { 
+          status: response.status,
+          headers: corsHeaders
+        }
+      );
+    }
+    
+    // Process the API response
+    const data = await response.json();
+    
+    if (!data || !data.data || !data.data.name) {
       return new Response(
         JSON.stringify({ 
           error: "Profile not found" 
@@ -89,20 +105,23 @@ serve(async (req) => {
       );
     }
     
+    // Map the API response to our expected format
+    const profileData = {
+      name: data.data.name || null,
+      headline: data.data.headline || null,
+      linkedInUrl: data.data.linkedin_url || null,
+      company: data.data.company || null,
+      location: data.data.location || null,
+      photoUrl: data.data.photo_url || null,
+      summary: data.data.summary || null,
+      twitter: data.data.twitter || null,
+      industry: data.data.industry || null,
+      found: true
+    };
+    
     // Return the profile data
     return new Response(
-      JSON.stringify({
-        name: profile.name,
-        headline: profile.headline,
-        linkedInUrl: profile.linkedInUrl,
-        company: profile.company,
-        location: profile.location,
-        photoUrl: profile.photoUrl,
-        summary: profile.summary,
-        twitter: profile.twitter,
-        industry: profile.industry,
-        found: true
-      }),
+      JSON.stringify(profileData),
       { 
         status: 200,
         headers: corsHeaders
