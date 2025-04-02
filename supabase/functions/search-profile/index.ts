@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
+import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,8 +10,9 @@ const corsHeaders = {
   "Content-Type": "application/json"
 };
 
-// Regular expression to extract LinkedIn URLs
+// Regular expressions for extracting profile URLs
 const linkedInUrlRegex = /https:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9\-\_\.]+\/?/g;
+const githubProfileRegex = /https:\/\/(www\.)?github\.com\/[a-zA-Z0-9\-\_\.]+\/?/g;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -100,110 +102,97 @@ serve(async (req) => {
       );
     }
     
-    // Get the API key from environment variables
-    const apiKey = Deno.env.get("REVERSECONTACT_API_KEY");
-    
-    if (!apiKey) {
-      console.error("Missing REVERSECONTACT_API_KEY environment variable");
-      return new Response(
-        JSON.stringify({ 
-          error: "Server configuration error: Missing API key" 
-        }),
-        { 
-          status: 500,
-          headers: corsHeaders
-        }
-      );
-    }
-    
     // Try ReverseContact API first
     try {
-      // Make API request to ReverseContact API
-      const response = await fetch("https://api.reversecontact.com/enrichment/linkedin", {
-        method: "POST",
-        headers: {
-          "X-Api-Key": apiKey,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data && data.data && data.data.name) {
-          // Map the API response to our expected format
-          const profileData = {
-            name: data.data.name || null,
-            headline: data.data.headline || null,
-            linkedInUrl: data.data.linkedin_url || null,
-            company: data.data.company || null,
-            location: data.data.location || null,
-            photoUrl: data.data.photo_url || null,
-            summary: data.data.summary || null,
-            twitter: data.data.twitter || null,
-            industry: data.data.industry || null,
-            found: true
-          };
-          
-          // Store to cache if Supabase client is available
-          if (supabaseUrl && supabaseAnonKey) {
-            try {
-              const supabase = createClient(supabaseUrl, supabaseAnonKey);
-              // Check if email exists in cache
-              const { data: existingData, error: fetchError } = await supabase
-                .from("email_lookups")
-                .select("id")
-                .eq("email", email);
-                
-              if (!fetchError && existingData && existingData.length === 0) {
-                // Insert new record if it doesn't exist
-                await supabase
-                  .from("email_lookups")
-                  .insert({
-                    email,
-                    name: profileData.name,
-                    company: profileData.company,
-                    linkedin: profileData.linkedInUrl,
-                    twitter: profileData.twitter,
-                    headline: profileData.headline,
-                    location: profileData.location,
-                    summary: profileData.summary,
-                    photo_url: profileData.photoUrl,
-                    industry: profileData.industry,
-                    found: true
-                  });
-              }
-            } catch (cacheError) {
-              console.error("Error caching profile:", cacheError);
-            }
-          }
-          
-          // Return the profile data
-          return new Response(
-            JSON.stringify(profileData),
-            { 
-              status: 200,
-              headers: corsHeaders
-            }
-          );
-        }
-      }
+      // Get the API key from environment variables
+      const apiKey = Deno.env.get("REVERSECONTACT_API_KEY");
       
-      // If we get here, the API didn't return a valid profile
-      console.log("ReverseContact API didn't find a profile, trying fallback search...");
+      if (!apiKey) {
+        console.error("Missing REVERSECONTACT_API_KEY environment variable");
+        // Continue to fallback search methods
+      } else {
+        // Make API request to ReverseContact API
+        const response = await fetch("https://api.reversecontact.com/enrichment/linkedin", {
+          method: "POST",
+          headers: {
+            "X-Api-Key": apiKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data && data.data && data.data.name) {
+            // Map the API response to our expected format
+            const profileData = {
+              name: data.data.name || null,
+              headline: data.data.headline || null,
+              linkedInUrl: data.data.linkedin_url || null,
+              company: data.data.company || null,
+              location: data.data.location || null,
+              photoUrl: data.data.photo_url || null,
+              summary: data.data.summary || null,
+              twitter: data.data.twitter || null,
+              industry: data.data.industry || null,
+              found: true
+            };
+            
+            // Store to cache if Supabase client is available
+            if (supabaseUrl && supabaseAnonKey) {
+              try {
+                const supabase = createClient(supabaseUrl, supabaseAnonKey);
+                // Check if email exists in cache
+                const { data: existingData, error: fetchError } = await supabase
+                  .from("email_lookups")
+                  .select("id")
+                  .eq("email", email);
+                  
+                if (!fetchError && (!existingData || existingData.length === 0)) {
+                  // Insert new record if it doesn't exist
+                  await supabase
+                    .from("email_lookups")
+                    .insert({
+                      email,
+                      name: profileData.name,
+                      company: profileData.company,
+                      linkedin: profileData.linkedInUrl,
+                      twitter: profileData.twitter,
+                      headline: profileData.headline,
+                      location: profileData.location,
+                      summary: profileData.summary,
+                      photo_url: profileData.photoUrl,
+                      industry: profileData.industry,
+                      found: true
+                    });
+                }
+              } catch (cacheError) {
+                console.error("Error caching profile:", cacheError);
+              }
+            }
+            
+            // Return the profile data
+            return new Response(
+              JSON.stringify(profileData),
+              { 
+                status: 200,
+                headers: corsHeaders
+              }
+            );
+          }
+        }
+        
+        // If we get here, the API didn't return a valid profile
+        console.log("ReverseContact API didn't find a profile, trying direct LinkedIn search...");
+      }
     } catch (apiError) {
       console.error("Error calling ReverseContact API:", apiError);
       // Continue to fallback method if API fails
     }
     
-    // Fallback web search method if API returns no results or fails
-    // Generate search queries
-    const searchQueries = [
-      `"${email}" "linkedin.com/in"`,
-      `"${email}" linkedin`,
-      `"${email.replace("@", "[at]")}" linkedin profile`
-    ];
+    // Fallback web search method - Direct LinkedIn Search
+    console.log("Starting direct LinkedIn search for email:", email);
     
     // Get the Google API key and search engine ID from environment variables
     const googleApiKey = Deno.env.get("GOOGLE_API_KEY");
@@ -222,12 +211,19 @@ serve(async (req) => {
       );
     }
     
+    // Direct LinkedIn search queries
+    const directSearchQueries = [
+      `"${email}" "linkedin.com/in"`,
+      `"${email}" linkedin profile`,
+      `"${email.replace("@", "[at]")}" "linkedin.com/in"`
+    ];
+    
     let linkedInUrl = null;
     let linkedInData = null;
     
-    // Try each search query until we find a LinkedIn profile
-    for (const query of searchQueries) {
-      console.log(`Trying search query: ${query}`);
+    // Try direct search queries for LinkedIn
+    for (const query of directSearchQueries) {
+      console.log(`Trying direct LinkedIn search query: ${query}`);
       
       try {
         // Call Google Custom Search API
@@ -235,7 +231,7 @@ serve(async (req) => {
         const searchResponse = await fetch(searchUrl);
         const searchData = await searchResponse.json();
         
-        console.log(`Search results for "${query}":`, JSON.stringify(searchData.items?.length ?? 0));
+        console.log(`Direct search results for "${query}":`, JSON.stringify(searchData.items?.length ?? 0));
         
         // Check if we have search results
         if (searchData.items && searchData.items.length > 0) {
@@ -244,6 +240,7 @@ serve(async (req) => {
             // Check in the link
             if (item.link && item.link.includes("linkedin.com/in/")) {
               linkedInUrl = item.link;
+              console.log(`Found LinkedIn URL in direct search: ${linkedInUrl}`);
               break;
             }
             
@@ -252,30 +249,193 @@ serve(async (req) => {
               const matches = item.snippet.match(linkedInUrlRegex);
               if (matches && matches.length > 0) {
                 linkedInUrl = matches[0];
+                console.log(`Found LinkedIn URL in snippet: ${linkedInUrl}`);
+                break;
+              }
+            }
+            
+            // Check in the title
+            if (item.title) {
+              const matches = item.title.match(linkedInUrlRegex);
+              if (matches && matches.length > 0) {
+                linkedInUrl = matches[0];
+                console.log(`Found LinkedIn URL in title: ${linkedInUrl}`);
                 break;
               }
             }
           }
           
           if (linkedInUrl) {
-            console.log(`Found LinkedIn URL: ${linkedInUrl}`);
             break;
           }
         }
       } catch (searchError) {
-        console.error(`Error searching with query "${query}":`, searchError);
+        console.error(`Error with direct LinkedIn search query "${query}":`, searchError);
         // Continue with next query if one fails
       }
     }
     
-    // If we found a LinkedIn URL, try to extract some basic information
+    // If direct LinkedIn search didn't find anything, try GitHub two-step search
+    if (!linkedInUrl) {
+      console.log("Direct LinkedIn search failed, trying two-step GitHub search");
+      
+      // GitHub search queries
+      const githubSearchQueries = [
+        `"${email}" site:github.com`,
+        `${email} github profile`,
+        `"${email.replace("@", "[at]")}" site:github.com`
+      ];
+      
+      let githubProfileUrl = null;
+      let personName = null;
+      
+      // Try to find GitHub profile
+      for (const query of githubSearchQueries) {
+        console.log(`Trying GitHub search query: ${query}`);
+        
+        try {
+          // Call Google Custom Search API for GitHub
+          const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${googleCx}&q=${encodeURIComponent(query)}`;
+          const searchResponse = await fetch(searchUrl);
+          const searchData = await searchResponse.json();
+          
+          console.log(`GitHub search results for "${query}":`, JSON.stringify(searchData.items?.length ?? 0));
+          
+          // Check if we have search results
+          if (searchData.items && searchData.items.length > 0) {
+            // Look for GitHub profile URLs in the search results
+            for (const item of searchData.items) {
+              // Check in the link
+              if (item.link && item.link.match(/github\.com\/[a-zA-Z0-9\-\_\.]+\/?$/)) {
+                githubProfileUrl = item.link;
+                console.log(`Found GitHub URL: ${githubProfileUrl}`);
+                break;
+              }
+              
+              // Check in the snippet
+              if (item.snippet) {
+                const matches = item.snippet.match(githubProfileRegex);
+                if (matches && matches.length > 0) {
+                  githubProfileUrl = matches[0];
+                  console.log(`Found GitHub URL in snippet: ${githubProfileUrl}`);
+                  break;
+                }
+              }
+            }
+            
+            if (githubProfileUrl) {
+              break;
+            }
+          }
+        } catch (searchError) {
+          console.error(`Error with GitHub search query "${query}":`, searchError);
+          // Continue with next query if one fails
+        }
+      }
+      
+      // If we found a GitHub profile URL, try to extract the person's name
+      if (githubProfileUrl) {
+        try {
+          console.log(`Fetching GitHub profile page: ${githubProfileUrl}`);
+          // Fetch the GitHub profile page
+          const githubResponse = await fetch(githubProfileUrl);
+          const githubHtml = await githubResponse.text();
+          
+          // Parse the HTML
+          const parser = new DOMParser();
+          const document = parser.parseFromString(githubHtml, "text/html");
+          
+          // Try different selectors to find the name
+          const nameSelectors = [
+            'span[itemprop="name"]',
+            '.vcard-fullname',
+            '.vcard-names .p-name',
+            '.p-name',
+            '.vcard-fullname',
+            'h1.vcard-names span'
+          ];
+          
+          for (const selector of nameSelectors) {
+            const nameElement = document?.querySelector(selector);
+            if (nameElement && nameElement.textContent) {
+              personName = nameElement.textContent.trim();
+              if (personName) {
+                console.log(`Found name on GitHub profile: ${personName}`);
+                break;
+              }
+            }
+          }
+        } catch (githubError) {
+          console.error("Error fetching or parsing GitHub profile:", githubError);
+        }
+      }
+      
+      // If we found a name, search for LinkedIn profile with the name
+      if (personName) {
+        const nameSearchQueries = [
+          `"${personName}" "linkedin.com/in"`,
+          `"${personName}" linkedin profile`,
+          `${personName} linkedin`
+        ];
+        
+        // Try name search queries
+        for (const query of nameSearchQueries) {
+          console.log(`Searching LinkedIn with name query: ${query}`);
+          
+          try {
+            // Call Google Custom Search API
+            const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${googleCx}&q=${encodeURIComponent(query)}`;
+            const searchResponse = await fetch(searchUrl);
+            const searchData = await searchResponse.json();
+            
+            console.log(`Name search results for "${query}":`, JSON.stringify(searchData.items?.length ?? 0));
+            
+            // Check if we have search results
+            if (searchData.items && searchData.items.length > 0) {
+              // Look for LinkedIn profile URLs in the search results
+              for (const item of searchData.items) {
+                // Check in the link
+                if (item.link && item.link.includes("linkedin.com/in/")) {
+                  linkedInUrl = item.link;
+                  console.log(`Found LinkedIn URL using name search: ${linkedInUrl}`);
+                  break;
+                }
+                
+                // Check in the snippet
+                if (item.snippet) {
+                  const matches = item.snippet.match(linkedInUrlRegex);
+                  if (matches && matches.length > 0) {
+                    linkedInUrl = matches[0];
+                    console.log(`Found LinkedIn URL in snippet using name search: ${linkedInUrl}`);
+                    break;
+                  }
+                }
+              }
+              
+              if (linkedInUrl) {
+                break;
+              }
+            }
+          } catch (searchError) {
+            console.error(`Error with name search query "${query}":`, searchError);
+            // Continue with next query if one fails
+          }
+        }
+      } else {
+        console.log("No name found from GitHub profile for email:", email);
+      }
+    }
+    
+    // If we found a LinkedIn URL through any method, create profile data
     if (linkedInUrl) {
       // Extract the username from the LinkedIn URL
       const usernameMatch = linkedInUrl.match(/linkedin\.com\/in\/([a-zA-Z0-9\-\_\.]+)/);
       const username = usernameMatch ? usernameMatch[1] : null;
       
+      console.log(`Successfully found LinkedIn profile for ${email}: ${linkedInUrl}`);
+      
       linkedInData = {
-        name: null, // We would need to scrape the page to get the actual name
+        name: personName, // This might be null if we only found LinkedIn directly
         headline: null,
         linkedInUrl,
         company: null,
@@ -298,15 +458,18 @@ serve(async (req) => {
             .select("id")
             .eq("email", email);
             
-          if (!fetchError && existingData && existingData.length === 0) {
+          if (!fetchError && (!existingData || existingData.length === 0)) {
             // Insert new profile data
             await supabase
               .from("email_lookups")
               .insert({
                 email,
+                name: linkedInData.name,
                 linkedin: linkedInUrl,
                 found: true
               });
+              
+            console.log(`Cached LinkedIn URL for ${email} in database`);
           }
         } catch (cacheError) {
           console.error("Error caching search results:", cacheError);
