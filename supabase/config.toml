@@ -1,1 +1,43 @@
+
 project_id = "lcimuovzpnvdgzerkixl"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[analytics]
+enabled = false
+
+[experimental]
+tracing = {enabled = false, provider = "otlp", endpoint = "http://localhost:4317"}
+multilanguage = {enabled = false}
+
+[[functions]]
+name = "email-lookup"
+verify_jwt = false
+
+[[functions]]
+name = "search-profile"
+verify_jwt = false

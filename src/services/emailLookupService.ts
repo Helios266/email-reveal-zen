@@ -13,7 +13,7 @@ interface EmailLookupResult {
   twitter: string | null;
   found: boolean;
   created_at: string;
-  user_id: string | null; // Changed to nullable
+  user_id: string | null;
   // New fields
   headline: string | null;
   location: string | null;
@@ -55,8 +55,8 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       };
     }
 
-    // Call the edge function - no authentication required
-    const { data, error } = await supabase.functions.invoke('email-lookup', {
+    // Call the search-profile edge function instead of email-lookup
+    const { data, error } = await supabase.functions.invoke('search-profile', {
       body: { email }
     });
 
@@ -66,24 +66,65 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       return null;
     }
 
-    // Insert the result into the database - no user_id required
+    // Check if profile was found
+    if (data.error) {
+      console.log('No profile found for email:', email);
+      
+      // Still insert a record but mark it as not found
+      const { data: insertedData, error: insertError } = await supabase
+        .from('email_lookups')
+        .insert({
+          email,
+          found: false,
+          user_id: null
+        })
+        .select('*')
+        .single();
+        
+      if (insertError) {
+        console.error('Error saving email lookup data:', insertError);
+        toast.error(`Save Error: Failed to save lookup data: ${insertError.message}`);
+        return null;
+      }
+      
+      return {
+        id: insertedData.id,
+        email: insertedData.email,
+        name: null,
+        company: null,
+        linkedin: null,
+        twitter: null,
+        headline: null,
+        location: null,
+        summary: null,
+        photo_url: null,
+        position: null,
+        education: null,
+        industry: null,
+        found: false,
+        created_at: insertedData.created_at,
+        user_id: insertedData.user_id
+      };
+    }
+
+    // Insert the result into the database
     const { data: insertedData, error: insertError } = await supabase
       .from('email_lookups')
       .insert({
         email,
         name: data.name || null,
         company: data.company || null,
-        linkedin: data.linkedin || null,
+        linkedin: data.linkedInUrl || null, // Note the property name change
         twitter: data.twitter || null,
         headline: data.headline || null,
         location: data.location || null,
         summary: data.summary || null,
         photo_url: data.photoUrl || null,
-        position: data.position || null,
-        education: data.education || null,
+        position: null, // We don't have detailed position data in our implementation
+        education: null, // We don't have education data in our implementation
         industry: data.industry || null,
         found: data.found || false,
-        user_id: null // Set to null since we don't require authentication
+        user_id: null
       })
       .select('*')
       .single();
@@ -156,8 +197,8 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
             return;
           }
 
-          // If not in DB, call the edge function - no authentication required
-          const { data, error } = await supabase.functions.invoke('email-lookup', {
+          // Call the search-profile edge function
+          const { data, error } = await supabase.functions.invoke('search-profile', {
             body: { email }
           });
 
@@ -166,38 +207,53 @@ export const lookupEmailBatch = async (emails: string[]): Promise<Record<string,
             results[email] = { found: false };
             return;
           }
+          
+          // Check if profile was found
+          if (data.error) {
+            // Insert record marked as not found
+            await supabase
+              .from('email_lookups')
+              .insert({
+                email,
+                found: false,
+                user_id: null
+              });
+            
+            results[email] = { found: false };
+            return;
+          }
 
-          // Insert the result into the database - no user_id required
+          // Insert the result into the database
           await supabase
             .from('email_lookups')
             .insert({
               email,
               name: data.name || null,
               company: data.company || null,
-              linkedin: data.linkedin || null,
+              linkedin: data.linkedInUrl || null, // Note the property name change
               twitter: data.twitter || null,
               headline: data.headline || null,
               location: data.location || null,
               summary: data.summary || null,
               photo_url: data.photoUrl || null,
-              position: data.position || null,
-              education: data.education || null,
+              position: null,
+              education: null,
               industry: data.industry || null,
               found: data.found || false,
-              user_id: null // Set to null since we don't require authentication
+              user_id: null
             });
 
           results[email] = {
             name: data.name,
             company: data.company,
-            linkedin: data.linkedin,
+            linkedin: data.linkedInUrl, // Note the property name change
             twitter: data.twitter,
             headline: data.headline,
             location: data.location,
             summary: data.summary,
             photoUrl: data.photoUrl,
-            position: data.position,
-            education: data.education,
+            position: null,
+            education: null,
             industry: data.industry,
             found: data.found
           };
