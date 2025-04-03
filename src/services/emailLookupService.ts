@@ -31,7 +31,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       .from('email_lookups')
       .select('*')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (existingData) {
       console.log('Found existing email lookup:', existingData);
@@ -87,6 +87,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
           return null;
         }
         
+        // Show a more descriptive toast based on the error
         toast.error(`No profile found for email: ${email}`);
         return {
           id: insertedData.id,
