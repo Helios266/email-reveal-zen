@@ -109,7 +109,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
 
     // Check if profile was found
     if (data.error) {
-      console.log('No profile found for email:', email);
+      console.log('No profile found for email:', email, 'Reason:', data.error, 'Details:', data.details || 'No details provided');
       
       // Still insert a record but mark it as not found
       const { data: insertedData, error: insertError } = await supabase
@@ -128,7 +128,7 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
         return null;
       }
       
-      toast.error(`No profile found for email: ${email}`);
+      toast.error(`No profile found for email: ${email}${data.details ? ` (${data.details})` : ''}`);
       return {
         id: insertedData.id,
         email: insertedData.email,

@@ -60,3 +60,4 @@ backend = "postgres"
 
 [functions.search-profile]
 verify_jwt = false
+
