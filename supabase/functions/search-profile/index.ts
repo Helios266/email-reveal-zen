@@ -239,17 +239,19 @@ serve(async (req) => {
         const searchResponse = await fetch(searchUrl);
         const searchData = await searchResponse.json();
         
-        console.log(`[DEBUG] Direct search results for "${query}": ${JSON.stringify(searchData.items?.length ?? 0)} items`);
-        console.log(`[DEBUG] Direct search response: ${JSON.stringify(searchData)}`);
+        console.log(`[DEBUG] Direct search results for "${query}": ${searchData.items?.length ?? 0} items`);
         
         // Check if we have search results
         if (searchData.items && searchData.items.length > 0) {
+          // Log full search results structure for detailed debugging
+          console.log(`[DEBUG] Direct search response structure: ${JSON.stringify(searchData.searchInformation || {})}`);
+          
           // Look for LinkedIn profile URLs in the search results
           for (const item of searchData.items) {
             console.log(`[DEBUG] Examining search result: ${JSON.stringify({
               title: item.title,
               link: item.link,
-              snippet: item.snippet
+              snippet: item.snippet && item.snippet.substring(0, 100) + '...' // Truncate long snippets
             })}`);
             
             // Check in the link
@@ -283,6 +285,11 @@ serve(async (req) => {
           if (linkedInUrl) {
             break;
           }
+        } else {
+          console.log(`[DEBUG] No items found in direct search results for "${query}"`);
+          if (searchData.error) {
+            console.error(`[DEBUG] Search API error: ${JSON.stringify(searchData.error)}`);
+          }
         }
       } catch (searchError) {
         console.error(`[DEBUG] Error with direct LinkedIn search query "${query}":`, searchError);
@@ -315,8 +322,12 @@ serve(async (req) => {
           const searchResponse = await fetch(searchUrl);
           const searchData = await searchResponse.json();
           
-          console.log(`[DEBUG] GitHub search results for "${query}": ${JSON.stringify(searchData.items?.length ?? 0)} items`);
-          console.log(`[DEBUG] GitHub search response: ${JSON.stringify(searchData)}`);
+          console.log(`[DEBUG] GitHub search results for "${query}": ${searchData.items?.length ?? 0} items`);
+          
+          // Log search data structure for detailed debugging
+          if (searchData.searchInformation) {
+            console.log(`[DEBUG] GitHub search info: ${JSON.stringify(searchData.searchInformation)}`);
+          }
           
           // Check if we have search results
           if (searchData.items && searchData.items.length > 0) {
@@ -325,7 +336,7 @@ serve(async (req) => {
               console.log(`[DEBUG] Examining GitHub search result: ${JSON.stringify({
                 title: item.title,
                 link: item.link,
-                snippet: item.snippet
+                snippet: item.snippet && item.snippet.substring(0, 100) + '...' // Truncate long snippets
               })}`);
               
               // Check in the link
@@ -349,6 +360,11 @@ serve(async (req) => {
             if (githubProfileUrl) {
               break;
             }
+          } else {
+            console.log(`[DEBUG] No items found in GitHub search results for "${query}"`);
+            if (searchData.error) {
+              console.error(`[DEBUG] GitHub search API error: ${JSON.stringify(searchData.error)}`);
+            }
           }
         } catch (searchError) {
           console.error(`[DEBUG] Error with GitHub search query "${query}":`, searchError);
@@ -364,7 +380,7 @@ serve(async (req) => {
           const githubResponse = await fetch(githubProfileUrl);
           const githubHtml = await githubResponse.text();
           console.log(`[DEBUG] GitHub profile page HTML length: ${githubHtml.length} characters`);
-          console.log(`[DEBUG] GitHub profile page HTML first 500 chars: ${githubHtml.substring(0, 500)}...`);
+          console.log(`[DEBUG] GitHub profile page HTML first 200 chars: ${githubHtml.substring(0, 200).replace(/\n/g, ' ')}...`);
           
           // Parse the HTML
           const parser = new DOMParser();
@@ -372,6 +388,8 @@ serve(async (req) => {
           
           if (!document) {
             console.log("[DEBUG] Failed to parse GitHub HTML");
+          } else {
+            console.log("[DEBUG] Successfully parsed GitHub HTML");
           }
           
           // Try different selectors to find the name
@@ -457,6 +475,8 @@ serve(async (req) => {
           `${personName} linkedin`
         ];
         
+        console.log(`[DEBUG] Starting LinkedIn search using name: ${personName}`);
+        
         // Try name search queries
         for (const query of nameSearchQueries) {
           console.log(`[DEBUG] Searching LinkedIn with name query: ${query}`);
@@ -469,8 +489,12 @@ serve(async (req) => {
             const searchResponse = await fetch(searchUrl);
             const searchData = await searchResponse.json();
             
-            console.log(`[DEBUG] Name search results for "${query}": ${JSON.stringify(searchData.items?.length ?? 0)} items`);
-            console.log(`[DEBUG] LinkedIn name search response: ${JSON.stringify(searchData)}`);
+            console.log(`[DEBUG] Name search results for "${query}": ${searchData.items?.length ?? 0} items`);
+            
+            // Log search data structure for detailed debugging
+            if (searchData.searchInformation) {
+              console.log(`[DEBUG] LinkedIn name search info: ${JSON.stringify(searchData.searchInformation)}`);
+            }
             
             // Check if we have search results
             if (searchData.items && searchData.items.length > 0) {
@@ -479,7 +503,7 @@ serve(async (req) => {
                 console.log(`[DEBUG] Examining name search result: ${JSON.stringify({
                   title: item.title,
                   link: item.link,
-                  snippet: item.snippet
+                  snippet: item.snippet && item.snippet.substring(0, 100) + '...' // Truncate long snippets
                 })}`);
                 
                 // Check in the link
@@ -512,6 +536,13 @@ serve(async (req) => {
               
               if (linkedInUrl) {
                 break;
+              } else {
+                console.log(`[DEBUG] No LinkedIn URL found in results for "${query}"`);
+              }
+            } else {
+              console.log(`[DEBUG] No items found in LinkedIn name search results for "${query}"`);
+              if (searchData.error) {
+                console.error(`[DEBUG] LinkedIn search API error: ${JSON.stringify(searchData.error)}`);
               }
             }
           } catch (searchError) {

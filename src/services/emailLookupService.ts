@@ -55,6 +55,8 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       };
     }
 
+    console.log('Calling search-profile edge function for email:', email);
+    
     // Call the search-profile edge function
     const { data, error } = await supabase.functions.invoke('search-profile', {
       body: { email }
@@ -65,6 +67,9 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       
       // If we got a non-2xx response, check if it contains a specific error message
       if (error.message?.includes('non-2xx status code')) {
+        // Log more details about the error response if available
+        console.error('Response details:', error);
+        
         // The error might contain profile not found or other API errors
         // We'll still insert a record but mark it as not found
         const { data: insertedData, error: insertError } = await supabase
@@ -107,6 +112,8 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       return null;
     }
 
+    console.log('Received response from search-profile:', data);
+    
     // Check if profile was found
     if (data.error) {
       console.log('No profile found for email:', email, 'Reason:', data.error, 'Details:', data.details || 'No details provided');
@@ -149,6 +156,8 @@ export const lookupEmail = async (email: string): Promise<EmailLookupResult | nu
       };
     }
 
+    console.log('Profile found:', data);
+    
     // Insert the result into the database
     const { data: insertedData, error: insertError } = await supabase
       .from('email_lookups')
