@@ -111,6 +111,7 @@ serve(async (req) => {
         console.error("Missing REVERSECONTACT_API_KEY environment variable");
         // Continue to fallback search methods
       } else {
+        console.log("Attempting ReverseContact API lookup for email:", email);
         // Make API request to ReverseContact API
         const response = await fetch("https://api.reversecontact.com/enrichment/linkedin", {
           method: "POST",
@@ -123,6 +124,7 @@ serve(async (req) => {
 
         if (response.ok) {
           const data = await response.json();
+          console.log("ReverseContact API response:", JSON.stringify(data));
           
           if (data && data.data && data.data.name) {
             // Map the API response to our expected format
@@ -240,7 +242,7 @@ serve(async (req) => {
             // Check in the link
             if (item.link && item.link.includes("linkedin.com/in/")) {
               linkedInUrl = item.link;
-              console.log(`Found LinkedIn URL in direct search: ${linkedInUrl}`);
+              console.log(`Found LinkedIn URL in direct search link: ${linkedInUrl}`);
               break;
             }
             
@@ -346,22 +348,50 @@ serve(async (req) => {
           const document = parser.parseFromString(githubHtml, "text/html");
           
           // Try different selectors to find the name
+          // Added more selectors including meta tags for better name extraction
           const nameSelectors = [
+            'meta[name="twitter:title"]',
+            'meta[property="og:title"]',
             'span[itemprop="name"]',
             '.vcard-fullname',
             '.vcard-names .p-name',
             '.p-name',
-            '.vcard-fullname',
             'h1.vcard-names span'
           ];
           
           for (const selector of nameSelectors) {
             const nameElement = document?.querySelector(selector);
-            if (nameElement && nameElement.textContent) {
-              personName = nameElement.textContent.trim();
+            if (nameElement) {
+              // For meta tags, use content attribute
+              if (selector.startsWith('meta')) {
+                personName = nameElement.getAttribute('content')?.trim();
+              } else {
+                personName = nameElement.textContent?.trim();
+              }
+              
               if (personName) {
+                // Clean up the name if it's from a meta tag (might include "on GitHub")
+                personName = personName.replace(/ on GitHub$/, '').trim();
                 console.log(`Found name on GitHub profile: ${personName}`);
                 break;
+              }
+            }
+          }
+          
+          // If we still don't have a name, try other approaches
+          if (!personName) {
+            // Try to find the name from document title
+            const title = document?.querySelector('title')?.textContent;
+            if (title) {
+              // Extract name from title like "username (Real Name) · GitHub"
+              const nameMatch = title.match(/([^()]+) \(([^)]+)\)/);
+              if (nameMatch && nameMatch[2]) {
+                personName = nameMatch[2].trim();
+                console.log(`Found name from title: ${personName}`);
+              } else if (title.includes(' · GitHub')) {
+                // Extract just the username part if no real name is found
+                personName = title.split(' · GitHub')[0].trim();
+                console.log(`Using username as name: ${personName}`);
               }
             }
           }
